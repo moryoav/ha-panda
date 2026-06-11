@@ -1,0 +1,129 @@
+write:
+  target:
+    device:
+      integration: panda_esl
+  fields:
+    payload:
+      required: true
+      example: |
+        - type: text
+          value: Hello World!
+          x: 10
+          y: 10
+          size: 40
+      default:
+        - type: text
+          value: Hello World!
+          x: 10
+          y: 10
+          size: 40
+      selector:
+        object:
+    rotate:
+      required: false
+      example: "0"
+      selector:
+        number:
+          min: 0
+          max: 270
+          step: 90
+    background:
+      required: false
+      example: white
+      selector:
+        select:
+          options:
+            - "white"
+            - "black"
+            - "red"
+            - "yellow"
+    threshold:
+      required: false
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          step: 1
+    red_threshold:
+      required: false
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          step: 1
+    dry_run:
+      required: false
+      example: "false"
+      selector:
+        boolean:
+write_guarded:
+  target:
+    device:
+      integration: panda_esl
+  fields:
+    payload:
+      required: true
+      example: |
+        - type: text
+          value: Hello World!
+          x: 10
+          y: 10
+          size: 40
+      default:
+        - type: text
+          value: Hello World!
+          x: 10
+          y: 10
+          size: 40
+      selector:
+        object:
+    rotate:
+      required: false
+      example: "0"
+      selector:
+        number:
+          min: 0
+          max: 270
+          step: 90
+    background:
+      required: false
+      example: white
+      selector:
+        select:
+          options:
+            - "white"
+            - "black"
+            - "red"
+            - "yellow"
+    threshold:
+      required: false
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          step: 1
+    red_threshold:
+      required: false
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          step: 1
+    dry_run:
+      required: false
+      example: "false"
+      selector:
+        boolean:
+    debounce_override_ms:
+      required: false
+      example: 5000
+      selector:
+        number:
+          min: 0
+          max: 120000
+          step: 1000
+          unit_of_measurement: ms

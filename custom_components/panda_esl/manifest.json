@@ -1,0 +1,41 @@
+{
+  "domain": "panda_esl",
+  "name": "PANDA ESL",
+  "after_dependencies": [
+    "recorder"
+  ],
+  "bluetooth": [
+    {
+      "local_name": "ETAG-*",
+      "connectable": false
+    },
+    {
+      "service_uuid": "18424398-7cbc-11e9-8f9e-2a86e4005a59",
+      "connectable": false
+    },
+    {
+      "service_uuid": "33323032-4c53-4545-4c42-4b4e494c4f57",
+      "connectable": false
+    },
+    {
+      "manufacturer_id": 34632,
+      "connectable": false
+    }
+  ],
+  "codeowners": [
+    "@moryoav"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
+  "documentation": "https://github.com/moryoav/ha-panda",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/moryoav/ha-panda/issues",
+  "requirements": [
+    "qrcode[pil]==7.4.2",
+    "python-barcode==0.15.1",
+    "pyStrich==0.9"
+  ],
+  "version": "0.1.0"
+}
