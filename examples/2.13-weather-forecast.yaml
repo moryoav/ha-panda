@@ -1,0 +1,323 @@
+sequence:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.openweathermap
+    data:
+      type: daily
+    response_variable: weather_response
+  - variables:
+      forecasts: "{{ weather_response['weather.openweathermap'].forecast }}"
+      grid_x_start: 5
+      cell_width: 49
+      cell_top: 7
+      cell_bottom: 121
+      label_y: 17
+      icon_y: 50
+      temp_y: 83
+      rain_y: 106
+  - action: panda_esl.write
+    target:
+      device_id: 02f83e543608fe720312585eaedf153c
+    data:
+      background: white
+      payload:
+        - type: line
+          x_start: "{{ grid_x_start + cell_width }}"
+          x_end: "{{ grid_x_start + cell_width }}"
+          y_start: "{{ cell_top }}"
+          y_end: "{{ cell_bottom }}"
+          width: 1
+          fill: black
+        - type: line
+          x_start: "{{ grid_x_start + (cell_width * 2) }}"
+          x_end: "{{ grid_x_start + (cell_width * 2) }}"
+          y_start: "{{ cell_top }}"
+          y_end: "{{ cell_bottom }}"
+          width: 1
+          fill: black
+        - type: line
+          x_start: "{{ grid_x_start + (cell_width * 3) }}"
+          x_end: "{{ grid_x_start + (cell_width * 3) }}"
+          y_start: "{{ cell_top }}"
+          y_end: "{{ cell_bottom }}"
+          width: 1
+          fill: black
+        - type: line
+          x_start: "{{ grid_x_start + (cell_width * 4) }}"
+          x_end: "{{ grid_x_start + (cell_width * 4) }}"
+          y_start: "{{ cell_top }}"
+          y_end: "{{ cell_bottom }}"
+          width: 1
+          fill: black
+        - type: line
+          x_start: 5
+          x_end: 251
+          y_start: 28
+          y_end: 28
+          width: 1
+          fill: black
+        - type: text
+          value: TODAY
+          x: "{{ grid_x_start + (cell_width * 0.5) }}"
+          "y": "{{ label_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 0 }}"
+        - type: icon
+          value: >-
+            {% if (forecasts | count) > 0 %}weather-{{ forecasts[0].condition
+            }}{% else %}weather-cloudy{% endif %}
+          x: "{{ grid_x_start + (cell_width * 0.5) }}"
+          "y": "{{ icon_y }}"
+          size: 24
+          color: >-
+            {% if (forecasts | count) > 0 and forecasts[0].condition in
+            ['rainy', 'pouring', 'lightning-rainy', 'snowy-rainy'] %}red{% else
+            %}black{% endif %}
+          anchor: mm
+          visible: "{{ (forecasts | count) > 0 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 0 %}{% set high =
+            forecasts[0].temperature | round(0) | int %}{% set low =
+            forecasts[0].templow if forecasts[0].templow is defined and
+            forecasts[0].templow is not none else none %}{{ high }}{% if low is
+            not none %}/{{ low | round(0) | int }}{% endif %}C{% endif %}
+          x: "{{ grid_x_start + (cell_width * 0.5) }}"
+          "y": "{{ temp_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 0 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 0 and forecasts[0].precipitation_probability
+            is defined and forecasts[0].precipitation_probability is not none
+            %}{{ forecasts[0].precipitation_probability | round(0) | int }}%{% endif %}
+          x: "{{ grid_x_start + (cell_width * 0.5) }}"
+          "y": "{{ rain_y }}"
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFMedium.ttf
+          visible: >-
+            {{ (forecasts | count) > 0 and forecasts[0].precipitation_probability
+            is defined and forecasts[0].precipitation_probability is not none and
+            (forecasts[0].precipitation_probability | float(0)) > 0 }}
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 1 %}{{ as_datetime(forecasts[1].datetime)
+            .strftime('%a') }}{% endif %}
+          x: "{{ grid_x_start + (cell_width * 1.5) }}"
+          "y": "{{ label_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 1 }}"
+        - type: icon
+          value: >-
+            {% if (forecasts | count) > 1 %}weather-{{ forecasts[1].condition
+            }}{% else %}weather-cloudy{% endif %}
+          x: "{{ grid_x_start + (cell_width * 1.5) }}"
+          "y": "{{ icon_y }}"
+          size: 24
+          color: >-
+            {% if (forecasts | count) > 1 and forecasts[1].condition in
+            ['rainy', 'pouring', 'lightning-rainy', 'snowy-rainy'] %}red{% else
+            %}black{% endif %}
+          anchor: mm
+          visible: "{{ (forecasts | count) > 1 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 1 %}{% set high =
+            forecasts[1].temperature | round(0) | int %}{% set low =
+            forecasts[1].templow if forecasts[1].templow is defined and
+            forecasts[1].templow is not none else none %}{{ high }}{% if low is
+            not none %}/{{ low | round(0) | int }}{% endif %}C{% endif %}
+          x: "{{ grid_x_start + (cell_width * 1.5) }}"
+          "y": "{{ temp_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 1 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 1 and forecasts[1].precipitation_probability
+            is defined and forecasts[1].precipitation_probability is not none
+            %}{{ forecasts[1].precipitation_probability | round(0) | int }}%{% endif %}
+          x: "{{ grid_x_start + (cell_width * 1.5) }}"
+          "y": "{{ rain_y }}"
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFMedium.ttf
+          visible: >-
+            {{ (forecasts | count) > 1 and forecasts[1].precipitation_probability
+            is defined and forecasts[1].precipitation_probability is not none and
+            (forecasts[1].precipitation_probability | float(0)) > 0 }}
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 2 %}{{ as_datetime(forecasts[2].datetime)
+            .strftime('%a') }}{% endif %}
+          x: "{{ grid_x_start + (cell_width * 2.5) }}"
+          "y": "{{ label_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 2 }}"
+        - type: icon
+          value: >-
+            {% if (forecasts | count) > 2 %}weather-{{ forecasts[2].condition
+            }}{% else %}weather-cloudy{% endif %}
+          x: "{{ grid_x_start + (cell_width * 2.5) }}"
+          "y": "{{ icon_y }}"
+          size: 24
+          color: >-
+            {% if (forecasts | count) > 2 and forecasts[2].condition in
+            ['rainy', 'pouring', 'lightning-rainy', 'snowy-rainy'] %}red{% else
+            %}black{% endif %}
+          anchor: mm
+          visible: "{{ (forecasts | count) > 2 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 2 %}{% set high =
+            forecasts[2].temperature | round(0) | int %}{% set low =
+            forecasts[2].templow if forecasts[2].templow is defined and
+            forecasts[2].templow is not none else none %}{{ high }}{% if low is
+            not none %}/{{ low | round(0) | int }}{% endif %}C{% endif %}
+          x: "{{ grid_x_start + (cell_width * 2.5) }}"
+          "y": "{{ temp_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 2 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 2 and forecasts[2].precipitation_probability
+            is defined and forecasts[2].precipitation_probability is not none
+            %}{{ forecasts[2].precipitation_probability | round(0) | int }}%{% endif %}
+          x: "{{ grid_x_start + (cell_width * 2.5) }}"
+          "y": "{{ rain_y }}"
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFMedium.ttf
+          visible: >-
+            {{ (forecasts | count) > 2 and forecasts[2].precipitation_probability
+            is defined and forecasts[2].precipitation_probability is not none and
+            (forecasts[2].precipitation_probability | float(0)) > 0 }}
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 3 %}{{ as_datetime(forecasts[3].datetime)
+            .strftime('%a') }}{% endif %}
+          x: "{{ grid_x_start + (cell_width * 3.5) }}"
+          "y": "{{ label_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 3 }}"
+        - type: icon
+          value: >-
+            {% if (forecasts | count) > 3 %}weather-{{ forecasts[3].condition
+            }}{% else %}weather-cloudy{% endif %}
+          x: "{{ grid_x_start + (cell_width * 3.5) }}"
+          "y": "{{ icon_y }}"
+          size: 24
+          color: >-
+            {% if (forecasts | count) > 3 and forecasts[3].condition in
+            ['rainy', 'pouring', 'lightning-rainy', 'snowy-rainy'] %}red{% else
+            %}black{% endif %}
+          anchor: mm
+          visible: "{{ (forecasts | count) > 3 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 3 %}{% set high =
+            forecasts[3].temperature | round(0) | int %}{% set low =
+            forecasts[3].templow if forecasts[3].templow is defined and
+            forecasts[3].templow is not none else none %}{{ high }}{% if low is
+            not none %}/{{ low | round(0) | int }}{% endif %}C{% endif %}
+          x: "{{ grid_x_start + (cell_width * 3.5) }}"
+          "y": "{{ temp_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 3 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 3 and forecasts[3].precipitation_probability
+            is defined and forecasts[3].precipitation_probability is not none
+            %}{{ forecasts[3].precipitation_probability | round(0) | int }}%{% endif %}
+          x: "{{ grid_x_start + (cell_width * 3.5) }}"
+          "y": "{{ rain_y }}"
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFMedium.ttf
+          visible: >-
+            {{ (forecasts | count) > 3 and forecasts[3].precipitation_probability
+            is defined and forecasts[3].precipitation_probability is not none and
+            (forecasts[3].precipitation_probability | float(0)) > 0 }}
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 4 %}{{ as_datetime(forecasts[4].datetime)
+            .strftime('%a') }}{% endif %}
+          x: "{{ grid_x_start + (cell_width * 4.5) }}"
+          "y": "{{ label_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 4 }}"
+        - type: icon
+          value: >-
+            {% if (forecasts | count) > 4 %}weather-{{ forecasts[4].condition
+            }}{% else %}weather-cloudy{% endif %}
+          x: "{{ grid_x_start + (cell_width * 4.5) }}"
+          "y": "{{ icon_y }}"
+          size: 24
+          color: >-
+            {% if (forecasts | count) > 4 and forecasts[4].condition in
+            ['rainy', 'pouring', 'lightning-rainy', 'snowy-rainy'] %}red{% else
+            %}black{% endif %}
+          anchor: mm
+          visible: "{{ (forecasts | count) > 4 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 4 %}{% set high =
+            forecasts[4].temperature | round(0) | int %}{% set low =
+            forecasts[4].templow if forecasts[4].templow is defined and
+            forecasts[4].templow is not none else none %}{{ high }}{% if low is
+            not none %}/{{ low | round(0) | int }}{% endif %}C{% endif %}
+          x: "{{ grid_x_start + (cell_width * 4.5) }}"
+          "y": "{{ temp_y }}"
+          size: 9
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ (forecasts | count) > 4 }}"
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 4 and forecasts[4].precipitation_probability
+            is defined and forecasts[4].precipitation_probability is not none
+            %}{{ forecasts[4].precipitation_probability | round(0) | int }}%{% endif %}
+          x: "{{ grid_x_start + (cell_width * 4.5) }}"
+          "y": "{{ rain_y }}"
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFMedium.ttf
+          visible: >-
+            {{ (forecasts | count) > 4 and forecasts[4].precipitation_probability
+            is defined and forecasts[4].precipitation_probability is not none and
+            (forecasts[4].precipitation_probability | float(0)) > 0 }}
+alias: PANDA ESL 2.13 - Weather Forecast
+description: ""

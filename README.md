@@ -82,6 +82,7 @@ The renderer supports the same element names and field names used by `hass-gicis
 Example automations for the 256x128 PANDA display live in [examples](examples/).
 
 - [2.13-calendar.yaml](examples/2.13-calendar.yaml): compact monthly calendar with Friday/Saturday in red and today highlighted.
+- [2.13-weather-forecast.yaml](examples/2.13-weather-forecast.yaml): OpenWeatherMap daily forecast row for today and the next few days.
 
 ## Notes
 
