@@ -1,4 +1,5 @@
 # PANDA ESL for Home Assistant
+[![HACS][hacs-badge]][hacs-url] [![release][release-badge]][release-url] ![downloads][downloads-badge] [![license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
 Home Assistant custom integration for PANDA / ETAG BLE electronic shelf labels.
 
@@ -17,17 +18,29 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 
 The PANDA display supports white, black, and red output. The service syntax accepts `yellow` for compatibility with Gicisky payloads, but yellow is mapped to red when writing to PANDA hardware.
 
-## HACS Installation
+## Installation
 
-1. In HACS, open the three-dot menu and choose **Custom repositories**.
-2. Add this repository URL:
+### HACS
 
-   `https://github.com/moryoav/ha-panda`
+[![Open the PANDA ESL HACS repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=moryoav&repository=ha-panda&category=integration)
 
-3. Select **Integration** as the category.
-4. Install **PANDA ESL**.
-5. Restart Home Assistant.
-6. Add the integration from **Settings > Devices & services**.
+1. Open HACS in Home Assistant.
+2. Add `https://github.com/moryoav/ha-panda` as an integration custom repository.
+3. Search for **PANDA ESL** and install it.
+4. Restart Home Assistant.
+5. Add the integration from **Settings** -> **Devices & services** -> **Add integration** -> **PANDA ESL**.
+
+### Manual
+
+1. Copy `custom_components/panda_esl` to `config/custom_components/panda_esl`.
+2. Restart Home Assistant.
+3. Add the integration from **Settings** -> **Devices & services** -> **Add integration** -> **PANDA ESL**.
+
+## Configuration
+
+[![Add the PANDA ESL integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=panda_esl)
+
+The integration is configured through the Home Assistant UI. If Home Assistant discovers a supported PANDA / ETAG label over Bluetooth, select it from the discovered devices list. You can also start the config flow manually from **Settings** -> **Devices & services** -> **Add integration** -> **PANDA ESL**.
 
 ## Services
 
@@ -99,9 +112,15 @@ The HACS repository layout is:
 
 ```text
 custom_components/panda_esl/
-brand/icon.png
+  brand/icon.png
 hacs.json
 README.md
 ```
 
 All files needed at runtime live under `custom_components/panda_esl/`, as required by HACS integration repositories.
+
+[hacs-badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square
+[hacs-url]: https://github.com/hacs/integration
+[release-badge]: https://img.shields.io/github/v/release/moryoav/ha-panda?style=flat-square
+[release-url]: https://github.com/moryoav/ha-panda/releases
+[downloads-badge]: https://img.shields.io/github/downloads/moryoav/ha-panda/total?style=flat-square
