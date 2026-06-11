@@ -1,0 +1,373 @@
+alias: "PANDA ESL 2.13 Calendar"
+description: "Monthly calendar for the PANDA ESL 256x128 display"
+triggers:
+  - trigger: time
+    at: "00:05:00"
+  - trigger: homeassistant
+    event: start
+actions:
+  - variables:
+      days_in_month: >-
+        {{ ((now().replace(day=1) + timedelta(days=32)).replace(day=1) -
+        timedelta(days=1)).day }}
+      start_weekday_offset: "{{ (now().replace(day=1).weekday() + 1) % 7 }}"
+      grid_x_start: 9
+      cell_width: 34
+      cell_height: 16
+      header_y: 13
+      grid_y_start: 26
+  - action: panda_esl.write
+    target:
+      device_id: YOUR_PANDA_ESL_DEVICE_ID
+    data:
+      background: white
+      payload:
+        - type: text
+          value: S
+          x: "{{ grid_x_start + (cell_width * 0.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: M
+          x: "{{ grid_x_start + (cell_width * 1.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: T
+          x: "{{ grid_x_start + (cell_width * 2.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: W
+          x: "{{ grid_x_start + (cell_width * 3.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: T
+          x: "{{ grid_x_start + (cell_width * 4.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: F
+          x: "{{ grid_x_start + (cell_width * 5.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: S
+          x: "{{ grid_x_start + (cell_width * 6.5) }}"
+          y: "{{ header_y }}"
+          size: 12
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: line
+          x_start: 8
+          x_end: 248
+          y_start: 22
+          y_end: 22
+          width: 1
+          fill: black
+        - type: circle
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + (now().day - 1)) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + (now().day - 1)) // 7) * cell_height) + (cell_height / 2) }}"
+          radius: 8
+          fill: black
+          outline: black
+        - type: text
+          value: "1"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 0) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 0) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 1 == now().day else ('red' if (((start_weekday_offset | int) + 0) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 1 <= (days_in_month | int) }}"
+        - type: text
+          value: "2"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 1) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 1) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 2 == now().day else ('red' if (((start_weekday_offset | int) + 1) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 2 <= (days_in_month | int) }}"
+        - type: text
+          value: "3"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 2) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 2) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 3 == now().day else ('red' if (((start_weekday_offset | int) + 2) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 3 <= (days_in_month | int) }}"
+        - type: text
+          value: "4"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 3) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 3) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 4 == now().day else ('red' if (((start_weekday_offset | int) + 3) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 4 <= (days_in_month | int) }}"
+        - type: text
+          value: "5"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 4) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 4) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 5 == now().day else ('red' if (((start_weekday_offset | int) + 4) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 5 <= (days_in_month | int) }}"
+        - type: text
+          value: "6"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 5) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 5) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 6 == now().day else ('red' if (((start_weekday_offset | int) + 5) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 6 <= (days_in_month | int) }}"
+        - type: text
+          value: "7"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 6) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 6) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 7 == now().day else ('red' if (((start_weekday_offset | int) + 6) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 7 <= (days_in_month | int) }}"
+        - type: text
+          value: "8"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 7) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 7) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 8 == now().day else ('red' if (((start_weekday_offset | int) + 7) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 8 <= (days_in_month | int) }}"
+        - type: text
+          value: "9"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 8) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 8) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 9 == now().day else ('red' if (((start_weekday_offset | int) + 8) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 9 <= (days_in_month | int) }}"
+        - type: text
+          value: "10"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 9) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 9) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 10 == now().day else ('red' if (((start_weekday_offset | int) + 9) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 10 <= (days_in_month | int) }}"
+        - type: text
+          value: "11"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 10) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 10) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 11 == now().day else ('red' if (((start_weekday_offset | int) + 10) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 11 <= (days_in_month | int) }}"
+        - type: text
+          value: "12"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 11) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 11) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 12 == now().day else ('red' if (((start_weekday_offset | int) + 11) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 12 <= (days_in_month | int) }}"
+        - type: text
+          value: "13"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 12) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 12) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 13 == now().day else ('red' if (((start_weekday_offset | int) + 12) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 13 <= (days_in_month | int) }}"
+        - type: text
+          value: "14"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 13) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 13) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 14 == now().day else ('red' if (((start_weekday_offset | int) + 13) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 14 <= (days_in_month | int) }}"
+        - type: text
+          value: "15"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 14) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 14) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 15 == now().day else ('red' if (((start_weekday_offset | int) + 14) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 15 <= (days_in_month | int) }}"
+        - type: text
+          value: "16"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 15) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 15) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 16 == now().day else ('red' if (((start_weekday_offset | int) + 15) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 16 <= (days_in_month | int) }}"
+        - type: text
+          value: "17"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 16) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 16) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 17 == now().day else ('red' if (((start_weekday_offset | int) + 16) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 17 <= (days_in_month | int) }}"
+        - type: text
+          value: "18"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 17) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 17) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 18 == now().day else ('red' if (((start_weekday_offset | int) + 17) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 18 <= (days_in_month | int) }}"
+        - type: text
+          value: "19"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 18) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 18) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 19 == now().day else ('red' if (((start_weekday_offset | int) + 18) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 19 <= (days_in_month | int) }}"
+        - type: text
+          value: "20"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 19) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 19) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 20 == now().day else ('red' if (((start_weekday_offset | int) + 19) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 20 <= (days_in_month | int) }}"
+        - type: text
+          value: "21"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 20) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 20) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 21 == now().day else ('red' if (((start_weekday_offset | int) + 20) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 21 <= (days_in_month | int) }}"
+        - type: text
+          value: "22"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 21) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 21) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 22 == now().day else ('red' if (((start_weekday_offset | int) + 21) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 22 <= (days_in_month | int) }}"
+        - type: text
+          value: "23"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 22) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 22) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 23 == now().day else ('red' if (((start_weekday_offset | int) + 22) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 23 <= (days_in_month | int) }}"
+        - type: text
+          value: "24"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 23) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 23) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 24 == now().day else ('red' if (((start_weekday_offset | int) + 23) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 24 <= (days_in_month | int) }}"
+        - type: text
+          value: "25"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 24) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 24) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 25 == now().day else ('red' if (((start_weekday_offset | int) + 24) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 25 <= (days_in_month | int) }}"
+        - type: text
+          value: "26"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 25) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 25) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 26 == now().day else ('red' if (((start_weekday_offset | int) + 25) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 26 <= (days_in_month | int) }}"
+        - type: text
+          value: "27"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 26) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 26) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 27 == now().day else ('red' if (((start_weekday_offset | int) + 26) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 27 <= (days_in_month | int) }}"
+        - type: text
+          value: "28"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 27) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 27) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 28 == now().day else ('red' if (((start_weekday_offset | int) + 27) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 28 <= (days_in_month | int) }}"
+        - type: text
+          value: "29"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 28) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 28) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 29 == now().day else ('red' if (((start_weekday_offset | int) + 28) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 29 <= (days_in_month | int) }}"
+        - type: text
+          value: "30"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 29) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 29) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 30 == now().day else ('red' if (((start_weekday_offset | int) + 29) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 30 <= (days_in_month | int) }}"
+        - type: text
+          value: "31"
+          x: "{{ grid_x_start + ((((start_weekday_offset | int) + 30) % 7) * cell_width) + (cell_width / 2) }}"
+          y: "{{ grid_y_start + ((((start_weekday_offset | int) + 30) // 7) * cell_height) + (cell_height / 2) }}"
+          size: 11
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          color: "{{ 'white' if 31 == now().day else ('red' if (((start_weekday_offset | int) + 30) % 7) in [5, 6] else 'black') }}"
+          visible: "{{ 31 <= (days_in_month | int) }}"
+mode: single

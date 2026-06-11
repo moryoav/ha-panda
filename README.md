@@ -77,6 +77,12 @@ The renderer supports the same element names and field names used by `hass-gicis
 
 `text`, `multiline`, `line`, `rectangle`, `rectangle_pattern`, `circle`, `ellipse`, `icon`, `dlimg`, `qrcode`, `barcode`, `datamatrix`, `diagram`, `plot`, `progress_bar`, `arc`, `gauge`, `polygon`, `table`, and `text_box`.
 
+## Examples
+
+Example automations for the 256x128 PANDA display live in [examples](examples/).
+
+- [2.13-calendar.yaml](examples/2.13-calendar.yaml): compact monthly calendar with Friday/Saturday in red and today highlighted.
+
 ## Notes
 
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
