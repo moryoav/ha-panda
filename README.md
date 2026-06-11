@@ -12,6 +12,7 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 - `panda_esl.write_guarded` service with duplicate, write-lock, and debounce guards
 - Preview and last-updated image entities
 - Write-lock switch
+- Packet notification capture switch for BLE transfer diagnostics
 - Bundled fonts and Material Design Icons support
 
 The PANDA display supports white, black, and red output. The service syntax accepts `yellow` for compatibility with Gicisky payloads, but yellow is mapped to red when writing to PANDA hardware.
@@ -79,7 +80,7 @@ The renderer supports the same element names and field names used by `hass-gicis
 
 ## Examples
 
-Example automations for the 256x128 PANDA display live in [examples](examples/).
+Example scripts for the 256x128 PANDA display live in [examples](examples/).
 
 - [2.13-calendar.yaml](examples/2.13-calendar.yaml): compact monthly calendar with Friday/Saturday in red and today highlighted.
 - [2.13-weather-forecast.yaml](examples/2.13-weather-forecast.yaml): OpenWeatherMap daily forecast row for today and the next few days.
@@ -88,6 +89,7 @@ Example automations for the 256x128 PANDA display live in [examples](examples/).
 
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
 - The default write delay is 150 ms to preserve the reliable timing used by the diagnostic framed-image button.
+- Turn on the **Packet Notification Capture** diagnostic switch to write JSONL transfer traces under `config/panda_esl_traces/`. Entity attributes keep only the summary and latest trace file path.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.
 
 ## Development

@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from io import BytesIO
+import json
+import logging
+from pathlib import Path
+import time
 from typing import Any
 
 from bleak import BleakClient
@@ -17,7 +22,10 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from PIL import Image
 
+from .const import TRACE_DIRECTORY
 from .models import PandaEslState
+
+_LOGGER = logging.getLogger(__name__)
 
 PANDA_FFE1_CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 
@@ -43,6 +51,89 @@ class PandaEslRuntimeData:
     coordinator: DataUpdateCoordinator[PandaEslState]
     image_coordinator: DataUpdateCoordinator[bytes]
     preview_coordinator: DataUpdateCoordinator[bytes]
+    packet_notification_capture: bool = False
+
+
+def _safe_filename_part(value: str) -> str:
+    """Return a conservative filename segment."""
+    return "".join(ch if ch.isalnum() else "_" for ch in value).strip("_")
+
+
+def _decode_packet(packet: bytes) -> dict[str, Any]:
+    """Decode the PANDA packet envelope enough for trace inspection."""
+    decoded: dict[str, Any] = {"enveloped": False}
+    if len(packet) < 3 or packet[0] != 0xAC or packet[-1] != 0xCA:
+        return decoded
+
+    command = packet[1]
+    decoded = {
+        "enveloped": True,
+        "command": f"0x{command:02x}",
+    }
+    if command == 0x01 and len(packet) >= 10:
+        decoded.update(
+            {
+                "kind": "image_chunk",
+                "plane": packet[2],
+                "chunk_index": (packet[3] << 8) | packet[4],
+                "chunk_total": (packet[5] << 8) | packet[6],
+                "flags": packet[7],
+                "declared_payload_len": packet[8],
+                "actual_payload_len": max(0, len(packet) - 10),
+            }
+        )
+    elif command == 0x03:
+        decoded["kind"] = "commit"
+    elif command in (0x05, 0x07, 0x11):
+        decoded["kind"] = "preamble"
+    else:
+        decoded["kind"] = "unknown"
+    return decoded
+
+
+def _write_packet_trace_file(
+    config_path: str,
+    metadata: dict[str, Any],
+    packet_events: list[dict[str, Any]],
+    notifications: list[dict[str, Any]],
+    summary: dict[str, Any],
+) -> str:
+    """Write a packet notification trace file and return its path."""
+    trace_dir = Path(config_path) / TRACE_DIRECTORY
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = _safe_filename_part(str(metadata["started_at"]).replace("+00:00", "Z"))
+    address = _safe_filename_part(str(metadata.get("address", "unknown")))
+    action = _safe_filename_part(str(metadata.get("action_key", "write")))
+    path = trace_dir / f"{timestamp}_{address}_{action}.jsonl"
+
+    with path.open("w", encoding="utf-8", newline="\n") as trace_file:
+        trace_file.write(
+            json.dumps({"type": "metadata", **metadata}, sort_keys=True) + "\n"
+        )
+        for event in packet_events:
+            trace_file.write(
+                json.dumps({"type": "packet", **event}, sort_keys=True) + "\n"
+            )
+        assigned_notification_ids = {
+            notification["id"]
+            for event in packet_events
+            for notification in event.get("notifications", [])
+        }
+        for notification in notifications:
+            if notification["id"] in assigned_notification_ids:
+                continue
+            trace_file.write(
+                json.dumps(
+                    {"type": "unassigned_notification", **notification},
+                    sort_keys=True,
+                )
+                + "\n"
+            )
+        trace_file.write(
+            json.dumps({"type": "summary", **summary}, sort_keys=True) + "\n"
+        )
+
+    return str(path)
 
 
 def update_from_service_info(
@@ -347,13 +438,31 @@ async def _async_send_packets(
         runtime.coordinator.async_set_updated_data(runtime.state)
         raise HomeAssistantError(message)
 
+    capture_trace = runtime.packet_notification_capture
+    trace_started_at = datetime.now(timezone.utc)
+    trace_started_monotonic = time.monotonic()
+    trace_packet_events: list[dict[str, Any]] = []
+    trace_notifications: list[dict[str, Any]] = []
+    current_packet_event: dict[str, Any] | None = None
     notifications: list[str] = []
     client: BleakClient | None = None
     try:
         client = await establish_connection(BleakClient, ble_device, address)
 
         def _notification_handler(_sender: Any, data: bytearray) -> None:
-            notifications.append(bytes(data).hex())
+            notification = {
+                "id": len(trace_notifications),
+                "relative_ms": round(
+                    (time.monotonic() - trace_started_monotonic) * 1000, 3
+                ),
+                "sender": str(_sender),
+                "data_hex": bytes(data).hex(),
+                "length": len(data),
+            }
+            trace_notifications.append(notification)
+            notifications.append(notification["data_hex"])
+            if current_packet_event is not None:
+                current_packet_event["notifications"].append(notification)
 
         notify_started = False
         try:
@@ -377,10 +486,41 @@ async def _async_send_packets(
         preamble_len = len(_STANDARD_PREAMBLE)
         image_packets_written = 0
         for packet_index, packet in enumerate(packets):
+            if capture_trace:
+                if packet_index < preamble_len:
+                    stage = "preamble"
+                elif packet_index == len(packets) - 1:
+                    stage = "final"
+                else:
+                    stage = "image"
+                current_packet_event = {
+                    "packet_index": packet_index,
+                    "stage": stage,
+                    "relative_start_ms": round(
+                        (time.monotonic() - trace_started_monotonic) * 1000, 3
+                    ),
+                    "packet_len": len(packet),
+                    "packet_hex": packet.hex(),
+                    "decoded": _decode_packet(packet),
+                    "notifications": [],
+                }
             await client.write_gatt_char(PANDA_FFE1_CHAR_UUID, packet, response=False)
+            if capture_trace and current_packet_event is not None:
+                current_packet_event["relative_write_return_ms"] = round(
+                    (time.monotonic() - trace_started_monotonic) * 1000, 3
+                )
             if preamble_len <= packet_index < len(packets) - 1:
                 image_packets_written += 1
             await asyncio.sleep(write_delay_ms / 1000)
+            if capture_trace and current_packet_event is not None:
+                current_packet_event["relative_end_ms"] = round(
+                    (time.monotonic() - trace_started_monotonic) * 1000, 3
+                )
+                current_packet_event["notification_count"] = len(
+                    current_packet_event["notifications"]
+                )
+                trace_packet_events.append(current_packet_event)
+                current_packet_event = None
 
         await asyncio.sleep(2)
         if notify_started:
@@ -388,6 +528,27 @@ async def _async_send_packets(
                 await client.stop_notify(PANDA_FFE1_CHAR_UUID)
             except Exception as err:  # noqa: BLE001
                 notifications.append(f"notify_stop_error:{type(err).__name__}:{err}")
+
+        trace_summary: dict[str, Any] = {}
+        if capture_trace:
+            packets_with_notifications = sum(
+                1
+                for event in trace_packet_events
+                if event.get("notification_count", 0) > 0
+            )
+            trace_summary = {
+                "trace_enabled": True,
+                "trace_started_at": trace_started_at.isoformat(),
+                "trace_duration_ms": round(
+                    (time.monotonic() - trace_started_monotonic) * 1000, 3
+                ),
+                "trace_packet_count": len(trace_packet_events),
+                "trace_notification_count": len(trace_notifications),
+                "trace_packets_with_notifications": packets_with_notifications,
+                "trace_packets_without_notifications": (
+                    len(trace_packet_events) - packets_with_notifications
+                ),
+            }
 
         write_details = {
             **details,
@@ -404,11 +565,103 @@ async def _async_send_packets(
             "characteristic": PANDA_FFE1_CHAR_UUID,
             "characteristic_info": characteristic_info,
             "protocol_variant": "v18_minimal",
+            **trace_summary,
         }
+        if capture_trace:
+            metadata = {
+                "trace_version": 1,
+                "started_at": trace_started_at.isoformat(),
+                "address": address,
+                "action_key": action_key,
+                "result_name": result_name,
+                "characteristic": PANDA_FFE1_CHAR_UUID,
+                "characteristic_info": characteristic_info,
+                "write_delay_ms": write_delay_ms,
+                "packet_count": len(packets),
+                "image_packets_written": image_packets_written,
+                "bytes_written": sum(len(packet) for packet in packets),
+                "protocol_variant": "v18_minimal",
+            }
+            try:
+                trace_file = await hass.async_add_executor_job(
+                    _write_packet_trace_file,
+                    hass.config.path(),
+                    metadata,
+                    trace_packet_events,
+                    trace_notifications,
+                    {**trace_summary, "result": result_name},
+                )
+                write_details["trace_file"] = trace_file
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning("Failed to write PANDA packet trace: %s", err)
+                write_details["trace_error"] = str(err)
+
         runtime.state.update_write_action(action_key, result_name, details=write_details)
         runtime.coordinator.async_set_updated_data(runtime.state)
     except Exception as err:
-        runtime.state.update_write_action(action_key, result_name + "_error", str(err))
+        error_details: dict[str, Any] | None = None
+        if capture_trace:
+            if current_packet_event is not None:
+                current_packet_event["relative_error_ms"] = round(
+                    (time.monotonic() - trace_started_monotonic) * 1000, 3
+                )
+                current_packet_event["error"] = str(err)
+                current_packet_event["notification_count"] = len(
+                    current_packet_event["notifications"]
+                )
+                trace_packet_events.append(current_packet_event)
+            packets_with_notifications = sum(
+                1
+                for event in trace_packet_events
+                if event.get("notification_count", 0) > 0
+            )
+            trace_summary = {
+                "trace_enabled": True,
+                "trace_started_at": trace_started_at.isoformat(),
+                "trace_duration_ms": round(
+                    (time.monotonic() - trace_started_monotonic) * 1000, 3
+                ),
+                "trace_packet_count": len(trace_packet_events),
+                "trace_notification_count": len(trace_notifications),
+                "trace_packets_with_notifications": packets_with_notifications,
+                "trace_packets_without_notifications": (
+                    len(trace_packet_events) - packets_with_notifications
+                ),
+                "trace_error": str(err),
+            }
+            metadata = {
+                "trace_version": 1,
+                "started_at": trace_started_at.isoformat(),
+                "address": address,
+                "action_key": action_key,
+                "result_name": result_name + "_error",
+                "characteristic": PANDA_FFE1_CHAR_UUID,
+                "write_delay_ms": write_delay_ms,
+                "packet_count": len(packets),
+                "protocol_variant": "v18_minimal",
+            }
+            error_details = {**details, **trace_summary}
+            try:
+                trace_file = await hass.async_add_executor_job(
+                    _write_packet_trace_file,
+                    hass.config.path(),
+                    metadata,
+                    trace_packet_events,
+                    trace_notifications,
+                    {**trace_summary, "result": result_name + "_error"},
+                )
+                error_details["trace_file"] = trace_file
+            except Exception as trace_err:  # noqa: BLE001
+                _LOGGER.warning("Failed to write PANDA packet trace: %s", trace_err)
+                error_details["trace_error"] = (
+                    f"{err}; trace_write_error={trace_err}"
+                )
+        runtime.state.update_write_action(
+            action_key,
+            result_name + "_error",
+            str(err),
+            details=error_details,
+        )
         runtime.coordinator.async_set_updated_data(runtime.state)
         raise HomeAssistantError(f"Failed to write PANDA ESL image: {err}") from err
     finally:

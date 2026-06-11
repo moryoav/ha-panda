@@ -38,6 +38,7 @@ from .const import (
     ETAG_525_SERVICE_UUID,
     MANUFACTURER,
     MODEL,
+    PACKET_NOTIFICATION_CAPTURE,
     PANDA_SERVICE_UUID,
     WRITE_LOCK,
 )
@@ -125,6 +126,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator=coordinator,
         image_coordinator=image_coordinator,
         preview_coordinator=preview_coordinator,
+        packet_notification_capture=bool(
+            entry.data.get(PACKET_NOTIFICATION_CAPTURE, False)
+        ),
     )
     entry.runtime_data = runtime
     coordinator.async_set_updated_data(state)
@@ -150,6 +154,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "last_image_data": None,
         "write_pending": False,
         WRITE_LOCK: bool(entry.data.get(WRITE_LOCK, False)),
+        PACKET_NOTIFICATION_CAPTURE: bool(
+            entry.data.get(PACKET_NOTIFICATION_CAPTURE, False)
+        ),
         "write_debouncer": Debouncer(
             hass,
             _LOGGER,
