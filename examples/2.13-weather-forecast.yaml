@@ -7,6 +7,8 @@ sequence:
     response_variable: weather_response
   - variables:
       forecasts: "{{ weather_response['weather.openweathermap'].forecast }}"
+      daily_weather_icon_overrides:
+        clear-night: sunny
       grid_x_start: 5
       cell_width: 49
       cell_top: 7
@@ -67,8 +69,11 @@ sequence:
           visible: "{{ (forecasts | count) > 0 }}"
         - type: icon
           value: >-
-            {% if (forecasts | count) > 0 %}weather-{{ forecasts[0].condition
-            }}{% else %}weather-cloudy{% endif %}
+            {% if (forecasts | count) > 0 %}{% set condition =
+            forecasts[0].condition | default('cloudy', true) %}weather-{{
+            daily_weather_icon_overrides[condition] if condition in
+            daily_weather_icon_overrides else condition }}{% else
+            %}weather-cloudy{% endif %}
           x: "{{ grid_x_start + (cell_width * 0.5) }}"
           "y": "{{ icon_y }}"
           size: 24
@@ -120,8 +125,11 @@ sequence:
           visible: "{{ (forecasts | count) > 1 }}"
         - type: icon
           value: >-
-            {% if (forecasts | count) > 1 %}weather-{{ forecasts[1].condition
-            }}{% else %}weather-cloudy{% endif %}
+            {% if (forecasts | count) > 1 %}{% set condition =
+            forecasts[1].condition | default('cloudy', true) %}weather-{{
+            daily_weather_icon_overrides[condition] if condition in
+            daily_weather_icon_overrides else condition }}{% else
+            %}weather-cloudy{% endif %}
           x: "{{ grid_x_start + (cell_width * 1.5) }}"
           "y": "{{ icon_y }}"
           size: 24
@@ -173,8 +181,11 @@ sequence:
           visible: "{{ (forecasts | count) > 2 }}"
         - type: icon
           value: >-
-            {% if (forecasts | count) > 2 %}weather-{{ forecasts[2].condition
-            }}{% else %}weather-cloudy{% endif %}
+            {% if (forecasts | count) > 2 %}{% set condition =
+            forecasts[2].condition | default('cloudy', true) %}weather-{{
+            daily_weather_icon_overrides[condition] if condition in
+            daily_weather_icon_overrides else condition }}{% else
+            %}weather-cloudy{% endif %}
           x: "{{ grid_x_start + (cell_width * 2.5) }}"
           "y": "{{ icon_y }}"
           size: 24
@@ -226,8 +237,11 @@ sequence:
           visible: "{{ (forecasts | count) > 3 }}"
         - type: icon
           value: >-
-            {% if (forecasts | count) > 3 %}weather-{{ forecasts[3].condition
-            }}{% else %}weather-cloudy{% endif %}
+            {% if (forecasts | count) > 3 %}{% set condition =
+            forecasts[3].condition | default('cloudy', true) %}weather-{{
+            daily_weather_icon_overrides[condition] if condition in
+            daily_weather_icon_overrides else condition }}{% else
+            %}weather-cloudy{% endif %}
           x: "{{ grid_x_start + (cell_width * 3.5) }}"
           "y": "{{ icon_y }}"
           size: 24
@@ -279,8 +293,11 @@ sequence:
           visible: "{{ (forecasts | count) > 4 }}"
         - type: icon
           value: >-
-            {% if (forecasts | count) > 4 %}weather-{{ forecasts[4].condition
-            }}{% else %}weather-cloudy{% endif %}
+            {% if (forecasts | count) > 4 %}{% set condition =
+            forecasts[4].condition | default('cloudy', true) %}weather-{{
+            daily_weather_icon_overrides[condition] if condition in
+            daily_weather_icon_overrides else condition }}{% else
+            %}weather-cloudy{% endif %}
           x: "{{ grid_x_start + (cell_width * 4.5) }}"
           "y": "{{ icon_y }}"
           size: 24
