@@ -37,7 +37,7 @@ OPTIONS_SCHEMA = {
     vol.Required(CONF_RETRY_COUNT, default=DEFAULT_RETRY_COUNT): NumberSelector(
         NumberSelectorConfig(
             min=1,
-            max=10,
+            max=2,
             step=1,
             mode=NumberSelectorMode.BOX,
         )

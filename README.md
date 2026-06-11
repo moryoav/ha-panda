@@ -88,7 +88,8 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 ## Notes
 
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
-- The default write delay is 150 ms to preserve the reliable timing used by the diagnostic framed-image button.
+- PANDA image chunks are ACK-gated using device progress notifications. Writes retry the whole transfer at most once.
+- The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
 - Turn on the **Packet Notification Capture** diagnostic switch to write JSONL transfer traces under `config/panda_esl_traces/`. Entity attributes keep only the summary and latest trace file path.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.
 

@@ -35,6 +35,11 @@ PANDA_CHUNK_PAYLOAD_SIZE = 50
 PANDA_WRITE_DELAY_MS = 150
 PANDA_CANVAS_WIDTH = 256
 PANDA_CANVAS_HEIGHT = 128
+PANDA_ACK_MAX_ATTEMPTS = 2
+PANDA_ACK_CHUNK_TIMEOUT_S = 5.0
+PANDA_ACK_FINAL_TIMEOUT_S = 10.0
+PANDA_ACK_INTER_PACKET_DELAY_MS = 10
+PANDA_FINAL_ACK = bytes.fromhex("91040019")
 
 _STANDARD_PREAMBLE: list[bytes] = [
     bytes.fromhex("ac05ca"),
@@ -89,6 +94,13 @@ def _decode_packet(packet: bytes) -> dict[str, Any]:
     else:
         decoded["kind"] = "unknown"
     return decoded
+
+
+def _progress_ack_value(data: bytes) -> int | None:
+    """Return the PANDA chunk progress value from a notification."""
+    if len(data) != 6 or data[0] != 0x91 or data[1] != 0x02 or data[-1] != 0x19:
+        return None
+    return int.from_bytes(data[2:5], "little")
 
 
 def _write_packet_trace_file(
@@ -419,7 +431,7 @@ def build_packets_from_rendered_image(
     return packets, _quantized_preview_png(display_pixels), details
 
 
-async def _async_send_packets(
+async def _async_send_packets_attempt(
     hass: HomeAssistant,
     runtime: PandaEslRuntimeData,
     *,
@@ -428,8 +440,10 @@ async def _async_send_packets(
     result_name: str,
     details: dict[str, Any],
     write_delay_ms: int = PANDA_WRITE_DELAY_MS,
+    attempt: int = 1,
+    max_attempts: int = PANDA_ACK_MAX_ATTEMPTS,
 ) -> None:
-    """Send packets using the stable slow transfer settings."""
+    """Send packets using PANDA notification ACK-gated flow control."""
     address = runtime.state.address
     ble_device = bluetooth.async_ble_device_from_address(hass, address, connectable=True)
     if ble_device is None:
@@ -444,25 +458,93 @@ async def _async_send_packets(
     trace_packet_events: list[dict[str, Any]] = []
     trace_notifications: list[dict[str, Any]] = []
     current_packet_event: dict[str, Any] | None = None
+    progress_cycles: list[set[int]] = [set()]
+    last_progress_value: int | None = None
+    final_ack_seen = False
+    ack_event = asyncio.Event()
     notifications: list[str] = []
     client: BleakClient | None = None
     try:
         client = await establish_connection(BleakClient, ble_device, address)
+        loop = asyncio.get_running_loop()
 
-        def _notification_handler(_sender: Any, data: bytearray) -> None:
+        def _record_notification(sender: str, data: bytes) -> None:
+            nonlocal final_ack_seen, last_progress_value
             notification = {
                 "id": len(trace_notifications),
                 "relative_ms": round(
                     (time.monotonic() - trace_started_monotonic) * 1000, 3
                 ),
-                "sender": str(_sender),
-                "data_hex": bytes(data).hex(),
+                "sender": sender,
+                "data_hex": data.hex(),
                 "length": len(data),
             }
             trace_notifications.append(notification)
             notifications.append(notification["data_hex"])
             if current_packet_event is not None:
                 current_packet_event["notifications"].append(notification)
+
+            progress_value = _progress_ack_value(data)
+            if progress_value is not None:
+                if (
+                    last_progress_value is not None
+                    and progress_value < last_progress_value
+                ):
+                    progress_cycles.append(set())
+                progress_cycles[-1].add(progress_value)
+                last_progress_value = progress_value
+                notification["ack_kind"] = "chunk_progress"
+                notification["ack_value"] = progress_value
+            elif data == PANDA_FINAL_ACK:
+                final_ack_seen = True
+                notification["ack_kind"] = "final"
+            ack_event.set()
+
+        def _notification_handler(_sender: Any, data: bytearray) -> None:
+            loop.call_soon_threadsafe(
+                _record_notification,
+                str(_sender),
+                bytes(data),
+            )
+
+        async def _wait_for_ack(
+            predicate: Any,
+            timeout: float,
+            label: str,
+        ) -> None:
+            deadline = time.monotonic() + timeout
+            while True:
+                if predicate():
+                    return
+                ack_event.clear()
+                if predicate():
+                    return
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise HomeAssistantError(f"Timed out waiting for PANDA ACK: {label}")
+                try:
+                    await asyncio.wait_for(ack_event.wait(), remaining)
+                except TimeoutError as err:
+                    raise HomeAssistantError(
+                        f"Timed out waiting for PANDA ACK: {label}"
+                    ) from err
+
+        async def _wait_for_chunk_progress(cycle: int, chunk_index: int) -> None:
+            await _wait_for_ack(
+                lambda: (
+                    len(progress_cycles) > cycle
+                    and chunk_index in progress_cycles[cycle]
+                ),
+                PANDA_ACK_CHUNK_TIMEOUT_S,
+                f"cycle {cycle} chunk {chunk_index}",
+            )
+
+        async def _wait_for_final_ack() -> None:
+            await _wait_for_ack(
+                lambda: final_ack_seen,
+                PANDA_ACK_FINAL_TIMEOUT_S,
+                "final commit",
+            )
 
         notify_started = False
         try:
@@ -471,6 +553,9 @@ async def _async_send_packets(
             await asyncio.sleep(0.2)
         except Exception as err:  # noqa: BLE001
             notifications.append(f"notify_start_error:{type(err).__name__}:{err}")
+            raise HomeAssistantError(
+                f"Failed to start PANDA notifications for ACK flow: {err}"
+            ) from err
 
         characteristic_info: dict[str, Any] = {}
         try:
@@ -485,7 +570,17 @@ async def _async_send_packets(
 
         preamble_len = len(_STANDARD_PREAMBLE)
         image_packets_written = 0
+        image_ack_cycle = -1
         for packet_index, packet in enumerate(packets):
+            decoded_packet = _decode_packet(packet)
+            expected_ack_cycle: int | None = None
+            if decoded_packet.get("kind") == "image_chunk":
+                if decoded_packet["chunk_index"] == 0:
+                    image_ack_cycle += 1
+                expected_ack_cycle = image_ack_cycle
+            elif decoded_packet.get("kind") == "commit":
+                final_ack_seen = False
+
             if capture_trace:
                 if packet_index < preamble_len:
                     stage = "preamble"
@@ -501,7 +596,8 @@ async def _async_send_packets(
                     ),
                     "packet_len": len(packet),
                     "packet_hex": packet.hex(),
-                    "decoded": _decode_packet(packet),
+                    "decoded": decoded_packet,
+                    "ack_cycle": expected_ack_cycle,
                     "notifications": [],
                 }
             await client.write_gatt_char(PANDA_FFE1_CHAR_UUID, packet, response=False)
@@ -511,7 +607,28 @@ async def _async_send_packets(
                 )
             if preamble_len <= packet_index < len(packets) - 1:
                 image_packets_written += 1
-            await asyncio.sleep(write_delay_ms / 1000)
+
+            if decoded_packet.get("kind") == "image_chunk":
+                assert expected_ack_cycle is not None
+                await _wait_for_chunk_progress(
+                    expected_ack_cycle,
+                    int(decoded_packet["chunk_index"]),
+                )
+                if capture_trace and current_packet_event is not None:
+                    current_packet_event["ack_received_ms"] = round(
+                        (time.monotonic() - trace_started_monotonic) * 1000, 3
+                    )
+                if PANDA_ACK_INTER_PACKET_DELAY_MS:
+                    await asyncio.sleep(PANDA_ACK_INTER_PACKET_DELAY_MS / 1000)
+            elif decoded_packet.get("kind") == "commit":
+                await _wait_for_final_ack()
+                if capture_trace and current_packet_event is not None:
+                    current_packet_event["ack_received_ms"] = round(
+                        (time.monotonic() - trace_started_monotonic) * 1000, 3
+                    )
+            else:
+                await asyncio.sleep(write_delay_ms / 1000)
+
             if capture_trace and current_packet_event is not None:
                 current_packet_event["relative_end_ms"] = round(
                     (time.monotonic() - trace_started_monotonic) * 1000, 3
@@ -522,7 +639,7 @@ async def _async_send_packets(
                 trace_packet_events.append(current_packet_event)
                 current_packet_event = None
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.2)
         if notify_started:
             try:
                 await client.stop_notify(PANDA_FFE1_CHAR_UUID)
@@ -550,6 +667,8 @@ async def _async_send_packets(
                 ),
             }
 
+        ack_progress_count = sum(len(cycle) for cycle in progress_cycles)
+        ack_cycle_count = sum(1 for cycle in progress_cycles if cycle)
         write_details = {
             **details,
             "address": address,
@@ -562,9 +681,16 @@ async def _async_send_packets(
             "bytes_written": sum(len(packet) for packet in packets),
             "notification_count": len(notifications),
             "notifications": notifications[:40],
+            "attempt": attempt,
+            "max_attempts": max_attempts,
+            "ack_progress_count": ack_progress_count,
+            "ack_cycle_count": ack_cycle_count,
+            "ack_final_seen": final_ack_seen,
+            "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
+            "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
             "characteristic": PANDA_FFE1_CHAR_UUID,
             "characteristic_info": characteristic_info,
-            "protocol_variant": "v18_minimal",
+            "protocol_variant": "v19_ack_gated",
             **trace_summary,
         }
         if capture_trace:
@@ -580,7 +706,11 @@ async def _async_send_packets(
                 "packet_count": len(packets),
                 "image_packets_written": image_packets_written,
                 "bytes_written": sum(len(packet) for packet in packets),
-                "protocol_variant": "v18_minimal",
+                "attempt": attempt,
+                "max_attempts": max_attempts,
+                "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
+                "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+                "protocol_variant": "v19_ack_gated",
             }
             try:
                 trace_file = await hass.async_add_executor_job(
@@ -589,7 +719,13 @@ async def _async_send_packets(
                     metadata,
                     trace_packet_events,
                     trace_notifications,
-                    {**trace_summary, "result": result_name},
+                    {
+                        **trace_summary,
+                        "result": result_name,
+                        "ack_progress_count": ack_progress_count,
+                        "ack_cycle_count": ack_cycle_count,
+                        "ack_final_seen": final_ack_seen,
+                    },
                 )
                 write_details["trace_file"] = trace_file
             except Exception as err:  # noqa: BLE001
@@ -629,6 +765,8 @@ async def _async_send_packets(
                 ),
                 "trace_error": str(err),
             }
+            ack_progress_count = sum(len(cycle) for cycle in progress_cycles)
+            ack_cycle_count = sum(1 for cycle in progress_cycles if cycle)
             metadata = {
                 "trace_version": 1,
                 "started_at": trace_started_at.isoformat(),
@@ -638,9 +776,24 @@ async def _async_send_packets(
                 "characteristic": PANDA_FFE1_CHAR_UUID,
                 "write_delay_ms": write_delay_ms,
                 "packet_count": len(packets),
-                "protocol_variant": "v18_minimal",
+                "attempt": attempt,
+                "max_attempts": max_attempts,
+                "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
+                "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+                "protocol_variant": "v19_ack_gated",
             }
-            error_details = {**details, **trace_summary}
+            error_details = {
+                **details,
+                **trace_summary,
+                "attempt": attempt,
+                "max_attempts": max_attempts,
+                "ack_progress_count": ack_progress_count,
+                "ack_cycle_count": ack_cycle_count,
+                "ack_final_seen": final_ack_seen,
+                "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
+                "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+                "protocol_variant": "v19_ack_gated",
+            }
             try:
                 trace_file = await hass.async_add_executor_job(
                     _write_packet_trace_file,
@@ -648,7 +801,13 @@ async def _async_send_packets(
                     metadata,
                     trace_packet_events,
                     trace_notifications,
-                    {**trace_summary, "result": result_name + "_error"},
+                    {
+                        **trace_summary,
+                        "result": result_name + "_error",
+                        "ack_progress_count": ack_progress_count,
+                        "ack_cycle_count": ack_cycle_count,
+                        "ack_final_seen": final_ack_seen,
+                    },
                 )
                 error_details["trace_file"] = trace_file
             except Exception as trace_err:  # noqa: BLE001
@@ -669,6 +828,48 @@ async def _async_send_packets(
             await client.disconnect()
 
 
+async def _async_send_packets(
+    hass: HomeAssistant,
+    runtime: PandaEslRuntimeData,
+    *,
+    packets: list[bytes],
+    action_key: str,
+    result_name: str,
+    details: dict[str, Any],
+    write_delay_ms: int = PANDA_WRITE_DELAY_MS,
+    max_attempts: int = PANDA_ACK_MAX_ATTEMPTS,
+) -> None:
+    """Send packets with at most one whole-write retry."""
+    bounded_attempts = max(1, min(int(max_attempts), PANDA_ACK_MAX_ATTEMPTS))
+    last_error: HomeAssistantError | None = None
+    for attempt in range(1, bounded_attempts + 1):
+        try:
+            await _async_send_packets_attempt(
+                hass,
+                runtime,
+                packets=packets,
+                action_key=action_key,
+                result_name=result_name,
+                details=details,
+                write_delay_ms=write_delay_ms,
+                attempt=attempt,
+                max_attempts=bounded_attempts,
+            )
+            return
+        except HomeAssistantError as err:
+            last_error = err
+            if attempt < bounded_attempts:
+                _LOGGER.warning(
+                    "Retrying PANDA ESL write to %s after ACK failure: %s",
+                    runtime.state.address,
+                    err,
+                )
+                await asyncio.sleep(1)
+
+    assert last_error is not None
+    raise last_error
+
+
 async def async_write_rendered_packets(
     hass: HomeAssistant,
     runtime: PandaEslRuntimeData,
@@ -678,6 +879,7 @@ async def async_write_rendered_packets(
     result_name: str,
     details: dict[str, Any],
     write_delay_ms: int = PANDA_WRITE_DELAY_MS,
+    max_attempts: int = PANDA_ACK_MAX_ATTEMPTS,
 ) -> None:
     """Send rendered-image packets through the proven PANDA packet path."""
     await _async_send_packets(
@@ -688,6 +890,7 @@ async def async_write_rendered_packets(
         result_name=result_name,
         details=details,
         write_delay_ms=write_delay_ms,
+        max_attempts=max_attempts,
     )
 
 

@@ -375,37 +375,24 @@ async def _async_execute_service_write(
     runtime: PandaEslRuntimeData = context["runtime"]
     store = context["store"]
     options = context["options"]
-    max_retries = int(options.get(CONF_RETRY_COUNT, DEFAULT_RETRY_COUNT))
+    max_attempts = max(
+        1,
+        min(int(options.get(CONF_RETRY_COUNT, DEFAULT_RETRY_COUNT)), 2),
+    )
     write_delay_ms = int(options.get(CONF_WRITE_DELAY_MS, DEFAULT_WRITE_DELAY_MS))
 
-    last_error: HomeAssistantError | None = None
-    for attempt in range(1, max_retries + 1):
-        try:
-            await async_write_rendered_packets(
-                hass,
-                runtime,
-                packets=context["packets"],
-                action_key=context["action_key"],
-                result_name="write_service_ok",
-                details={
-                    **context["details"],
-                    "attempt": attempt,
-                    "max_retries": max_retries,
-                },
-                write_delay_ms=write_delay_ms,
-            )
-            runtime.image_coordinator.async_set_updated_data(
-                context["current_image_data"]
-            )
-            store["last_image_data"] = context["current_image_data"]
-            return
-        except HomeAssistantError as err:
-            last_error = err
-            if attempt < max_retries:
-                await asyncio.sleep(1)
-
-    assert last_error is not None
-    raise last_error
+    await async_write_rendered_packets(
+        hass,
+        runtime,
+        packets=context["packets"],
+        action_key=context["action_key"],
+        result_name="write_service_ok",
+        details=context["details"],
+        write_delay_ms=write_delay_ms,
+        max_attempts=max_attempts,
+    )
+    runtime.image_coordinator.async_set_updated_data(context["current_image_data"])
+    store["last_image_data"] = context["current_image_data"]
 
 
 async def _async_run_guarded_write(
