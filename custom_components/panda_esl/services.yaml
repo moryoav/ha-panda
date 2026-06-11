@@ -1,7 +1,8 @@
 write:
   target:
     device:
-      integration: panda_esl
+      filter:
+        - integration: panda_esl
   fields:
     payload:
       required: true
@@ -61,7 +62,8 @@ write:
 write_guarded:
   target:
     device:
-      integration: panda_esl
+      filter:
+        - integration: panda_esl
   fields:
     payload:
       required: true
