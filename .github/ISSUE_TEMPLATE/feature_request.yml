@@ -1,0 +1,74 @@
+name: Feature request
+description: Suggest an improvement or new capability.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the Home Assistant workflow or label use case you want to make better.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem should this feature solve?
+      placeholder: "I want to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you would like to see.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Area of the project
+      options:
+        - Bluetooth discovery
+        - Bluetooth writes
+        - Renderer payload support
+        - Home Assistant actions/services
+        - Config flow or setup
+        - Entities
+        - Options or guarded writes
+        - Diagnostics or logs
+        - Documentation or examples
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: label_hardware
+    attributes:
+      label: Label hardware
+      description: Include model, display size, advertised name, or service UUID if known.
+      placeholder: "Example: ETAG-* 2.13 inch, 256x128"
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there current workarounds or other designs you considered?
+
+  - type: textarea
+    id: reliability
+    attributes:
+      label: Reliability, battery, and privacy considerations
+      description: Note any impact on Bluetooth traffic, write timing, retries, diagnostics, remote images, or private Home Assistant data.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I checked the existing issues for a similar request.
+          required: true
+        - label: This request does not include secrets, tokens, private URLs, Bluetooth MAC addresses when not needed, or personal Home Assistant configuration.
+          required: true

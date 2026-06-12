@@ -1,0 +1,136 @@
+name: Bug report
+description: Report a reproducible problem with PANDA ESL.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please remove secrets, tokens, private URLs, Bluetooth MAC addresses when not needed, and personal Home Assistant configuration before submitting.
+
+  - type: input
+    id: version
+    attributes:
+      label: PANDA ESL version
+      description: Include the installed version or commit if known.
+      placeholder: "Example: 0.1.5"
+    validations:
+      required: true
+
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "Example: 2026.5.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Installation method
+      options:
+        - HACS custom integration repository
+        - Manual custom integration install
+        - Development branch
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      options:
+        - Bluetooth discovery
+        - Bluetooth writes
+        - Renderer payloads
+        - Home Assistant actions/services
+        - Config flow or setup
+        - Entities
+        - Options or guarded writes
+        - Diagnostics or logs
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: host_type
+    attributes:
+      label: Home Assistant host type
+      description: Include OS, container, Supervisor, or hardware details if relevant.
+      placeholder: "Example: Home Assistant OS on Raspberry Pi 4"
+
+  - type: input
+    id: bluetooth_setup
+    attributes:
+      label: Bluetooth adapter setup
+      description: Include adapter model, proxy setup, or other Bluetooth details if relevant.
+      placeholder: "Example: built-in adapter, ESPHome Bluetooth proxy, USB adapter"
+
+  - type: input
+    id: label_hardware
+    attributes:
+      label: Label hardware
+      description: Include model, display size, advertised name, or service UUID if known.
+      placeholder: "Example: ETAG-* 2.13 inch, 256x128"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps that trigger the issue.
+      placeholder: |
+        1. Go to ...
+        2. Call action ...
+        3. See error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: service_payload
+    attributes:
+      label: Relevant service payload or configuration
+      description: Paste a minimal YAML example if the issue involves an action, option, or renderer payload.
+      render: yaml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs and diagnostics
+      description: Paste relevant Home Assistant logs, diagnostics, or packet capture summaries after removing sensitive information.
+      render: text
+
+  - type: textarea
+    id: extra_context
+    attributes:
+      label: Additional context
+      description: Add screenshots, preview images, or anything else that helps explain the issue.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I removed secrets, tokens, private URLs, Bluetooth MAC addresses when not needed, and personal Home Assistant configuration.
+          required: true
+        - label: I checked the existing issues for a similar report.
+          required: true
