@@ -23,6 +23,7 @@ The PANDA display supports white, black, and red output. The service syntax acce
 Known supported devices:
 
 - PANDA / ETAG 2.13 inch BLE electronic shelf labels that advertise as `ETAG-*`
+- Confirmed working product: [PANDA / ETAG BLE electronic shelf label](https://s.click.aliexpress.com/e/_c4Kgtn93)
 - Labels advertising PANDA service UUID `18424398-7cbc-11e9-8f9e-2a86e4005a59`
 - ETAG 525-style labels advertising service UUID `33323032-4c53-4545-4c42-4b4e494c4f57`
 
