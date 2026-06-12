@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6 - 2026-06-12
+
+- Add GitHub Actions validation workflows for HACS and hassfest.
+- Enable HACS README rendering.
+- Update write service metadata to use a HACS/hassfest-compatible PANDA ESL device selector.
+
 ## 0.1.5 - 2026-06-11
 
 - Add `quality_scale.yaml` tracking for Home Assistant gold quality-scale rules.
