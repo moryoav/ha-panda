@@ -220,6 +220,11 @@ class PandaEslState:
     last_write_result: str | None = None
     last_write_details: list[dict[str, Any]] = field(default_factory=list)
     write_action_results: dict[str, dict[str, Any]] = field(default_factory=dict)
+    write_progress_percent: float = 0.0
+    write_progress_chunks_written: int = 0
+    write_progress_chunks_total: int = 0
+    write_progress_attempt: int | None = None
+    write_progress_active: bool = False
 
     # Configurable protocol experiment settings. These are intentionally runtime-only;
     # once the correct values are found they can be promoted to stable options.
@@ -368,6 +373,9 @@ class PandaEslState:
                 "ack_final_seen",
                 "ack_chunk_timeout_s",
                 "ack_final_timeout_s",
+                "write_progress_percent",
+                "write_progress_chunks_written",
+                "write_progress_chunks_total",
                 "protocol_variant",
                 "trace_enabled",
                 "trace_file",
@@ -387,6 +395,26 @@ class PandaEslState:
                 if key in details:
                     attrs[key] = details[key]
         self.write_action_results[action_key] = attrs
+
+    def update_write_progress(
+        self,
+        percent: float,
+        *,
+        chunks_written: int | None = None,
+        chunks_total: int | None = None,
+        attempt: int | None = None,
+        active: bool | None = None,
+    ) -> None:
+        """Update BLE image write progress."""
+        self.write_progress_percent = round(max(0.0, min(float(percent), 100.0)), 1)
+        if chunks_written is not None:
+            self.write_progress_chunks_written = max(0, int(chunks_written))
+        if chunks_total is not None:
+            self.write_progress_chunks_total = max(0, int(chunks_total))
+        if attempt is not None:
+            self.write_progress_attempt = int(attempt)
+        if active is not None:
+            self.write_progress_active = active
 
     def update_experiment_setting(self, key: str, value: Any) -> None:
         """Update a runtime experiment setting."""

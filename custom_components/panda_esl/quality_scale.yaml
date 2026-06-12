@@ -58,7 +58,7 @@ rules:
   entity_category: done
   entity_device_class:
     status: exempt
-    comment: The integration exposes button, switch, and image entities without applicable device classes.
+    comment: The integration exposes button, switch, image, and percentage progress sensor entities without applicable device classes.
   entity_disabled_by_default: done
   entity_translations: done
   exception_translations: done

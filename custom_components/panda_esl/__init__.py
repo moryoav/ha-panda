@@ -55,7 +55,12 @@ from .runtime import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.IMAGE, Platform.SWITCH]
+PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
+    Platform.IMAGE,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 _SERVICE_LOCK = "__service_lock"
 _SERVICES_REGISTERED = "__services_registered"
 

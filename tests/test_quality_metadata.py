@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.6"
+    assert manifest["version"] == "0.1.7"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
 
@@ -74,7 +74,7 @@ def test_translations_cover_entities_services_and_exceptions() -> None:
 
     assert translations == strings
     assert set(strings["services"]) == {"write", "write_guarded"}
-    assert set(strings["entity"]) == {"button", "image", "switch"}
+    assert set(strings["entity"]) == {"button", "image", "sensor", "switch"}
     assert set(strings["entity"]["button"]) == {
         "white_fill",
         "black_fill",
@@ -85,6 +85,7 @@ def test_translations_cover_entities_services_and_exceptions() -> None:
         "last_updated_content",
         "preview_content",
     }
+    assert set(strings["entity"]["sensor"]) == {"write_progress"}
     assert set(strings["entity"]["switch"]) == {
         "write_lock",
         "packet_notification_capture",
@@ -130,7 +131,8 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.6 - 2026-06-12" in changelog
+    assert "## 0.1.7 - 2026-06-12" in changelog
+    assert "Write progress" in readme
     assert "Download diagnostics" in readme
     assert "Reconfigure" in readme
     assert "Supported Devices" in readme

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.7 - 2026-06-12
+
+- Add a write progress sensor that reports BLE image transfer progress from 0 to 100%.
+- Update progress after each acknowledged image chunk and mark completion after the final commit notification.
+
 ## 0.1.6 - 2026-06-12
 
 - Add GitHub Actions validation workflows for HACS and hassfest.

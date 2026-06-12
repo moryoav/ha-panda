@@ -104,6 +104,28 @@ def _progress_ack_value(data: bytes) -> int | None:
     return int.from_bytes(data[2:5], "little")
 
 
+def _image_chunk_packet_count(packets: list[bytes]) -> int:
+    """Return the number of image chunk packets in a transfer."""
+    return sum(
+        1 for packet in packets if _decode_packet(packet).get("kind") == "image_chunk"
+    )
+
+
+def _write_progress_percent(
+    chunks_written: int,
+    chunks_total: int,
+    *,
+    final_ack: bool = False,
+) -> float:
+    """Return write progress, reserving 100% for the final commit ACK."""
+    if final_ack:
+        return 100.0
+    if chunks_total <= 0:
+        return 0.0
+    confirmed_chunks = max(0, min(chunks_written, chunks_total))
+    return round(min((confirmed_chunks / (chunks_total + 1)) * 100, 99.9), 1)
+
+
 def _write_packet_trace_file(
     config_path: str,
     metadata: dict[str, Any],
@@ -465,9 +487,20 @@ async def _async_send_packets_attempt(
 ) -> None:
     """Send packets using PANDA notification ACK-gated flow control."""
     address = runtime.state.address
+    image_packet_total = _image_chunk_packet_count(packets)
+    runtime.state.update_write_progress(
+        0.0,
+        chunks_written=0,
+        chunks_total=image_packet_total,
+        attempt=attempt,
+        active=True,
+    )
+    runtime.coordinator.async_set_updated_data(runtime.state)
+
     ble_device = bluetooth.async_ble_device_from_address(hass, address, connectable=True)
     if ble_device is None:
         message = "No connectable BLE device handle is available"
+        runtime.state.update_write_progress(0.0, attempt=attempt, active=False)
         runtime.state.update_write_action(action_key, result_name + "_error", message)
         runtime.coordinator.async_set_updated_data(runtime.state)
         raise _translated_error("no_ble_device", message, address=address)
@@ -598,6 +631,7 @@ async def _async_send_packets_attempt(
 
         preamble_len = len(_STANDARD_PREAMBLE)
         image_packets_written = 0
+        image_packets_confirmed = 0
         image_ack_cycle = -1
         for packet_index, packet in enumerate(packets):
             decoded_packet = _decode_packet(packet)
@@ -642,6 +676,17 @@ async def _async_send_packets_attempt(
                     expected_ack_cycle,
                     int(decoded_packet["chunk_index"]),
                 )
+                image_packets_confirmed += 1
+                runtime.state.update_write_progress(
+                    _write_progress_percent(
+                        image_packets_confirmed, image_packet_total
+                    ),
+                    chunks_written=image_packets_confirmed,
+                    chunks_total=image_packet_total,
+                    attempt=attempt,
+                    active=True,
+                )
+                runtime.coordinator.async_set_updated_data(runtime.state)
                 if capture_trace and current_packet_event is not None:
                     current_packet_event["ack_received_ms"] = round(
                         (time.monotonic() - trace_started_monotonic) * 1000, 3
@@ -650,6 +695,16 @@ async def _async_send_packets_attempt(
                     await asyncio.sleep(PANDA_ACK_INTER_PACKET_DELAY_MS / 1000)
             elif decoded_packet.get("kind") == "commit":
                 await _wait_for_final_ack()
+                runtime.state.update_write_progress(
+                    _write_progress_percent(
+                        image_packets_confirmed, image_packet_total, final_ack=True
+                    ),
+                    chunks_written=image_packets_confirmed,
+                    chunks_total=image_packet_total,
+                    attempt=attempt,
+                    active=False,
+                )
+                runtime.coordinator.async_set_updated_data(runtime.state)
                 if capture_trace and current_packet_event is not None:
                     current_packet_event["ack_received_ms"] = round(
                         (time.monotonic() - trace_started_monotonic) * 1000, 3
@@ -716,6 +771,9 @@ async def _async_send_packets_attempt(
             "ack_final_seen": final_ack_seen,
             "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
             "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+            "write_progress_percent": runtime.state.write_progress_percent,
+            "write_progress_chunks_written": runtime.state.write_progress_chunks_written,
+            "write_progress_chunks_total": runtime.state.write_progress_chunks_total,
             "characteristic": PANDA_FFE1_CHAR_UUID,
             "characteristic_info": characteristic_info,
             "protocol_variant": "v19_ack_gated",
@@ -843,6 +901,11 @@ async def _async_send_packets_attempt(
                 error_details["trace_error"] = (
                     f"{err}; trace_write_error={trace_err}"
                 )
+        runtime.state.update_write_progress(
+            runtime.state.write_progress_percent,
+            attempt=attempt,
+            active=False,
+        )
         runtime.state.update_write_action(
             action_key,
             result_name + "_error",

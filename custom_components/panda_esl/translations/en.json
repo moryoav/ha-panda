@@ -96,6 +96,11 @@
         "name": "Preview content"
       }
     },
+    "sensor": {
+      "write_progress": {
+        "name": "Write progress"
+      }
+    },
     "switch": {
       "write_lock": {
         "name": "Write lock"

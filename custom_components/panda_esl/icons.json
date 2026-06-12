@@ -22,6 +22,11 @@
         "default": "mdi:image-search"
       }
     },
+    "sensor": {
+      "write_progress": {
+        "default": "mdi:progress-upload"
+      }
+    },
     "switch": {
       "write_lock": {
         "default": "mdi:lock"
