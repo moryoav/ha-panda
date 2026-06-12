@@ -25,6 +25,9 @@ Known supported devices:
 
 - PANDA / ETAG 2.13 inch BLE electronic shelf labels that advertise as `ETAG-*`
 - Confirmed working product: [PANDA / ETAG BLE electronic shelf label](https://s.click.aliexpress.com/e/_c4Kgtn93)
+
+![PANDA / ETAG BLE electronic shelf label](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/device.jpg)
+
 - Labels advertising PANDA service UUID `18424398-7cbc-11e9-8f9e-2a86e4005a59`
 - ETAG 525-style labels advertising service UUID `33323032-4c53-4545-4c42-4b4e494c4f57`
 
@@ -220,3 +223,7 @@ All files needed at runtime live under `custom_components/panda_esl/`, as requir
 [release-badge]: https://img.shields.io/github/v/release/moryoav/ha-panda?style=flat-square
 [release-url]: https://github.com/moryoav/ha-panda/releases
 [downloads-badge]: https://img.shields.io/github/downloads/moryoav/ha-panda/total?style=flat-square
+
+## Disclaimer
+
+I am not affiliated with PANDA, ETAG, AliExpress, or any seller or manufacturer of the referenced devices. Use this custom component at your own risk. I am not responsible for any damage to your device, data loss, hardware malfunction, or other issues caused by using this component.
