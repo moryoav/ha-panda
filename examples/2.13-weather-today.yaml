@@ -1,0 +1,198 @@
+sequence:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.openweathermap
+    data:
+      type: daily
+    response_variable: weather_response
+  - variables:
+      weather_entity: weather.openweathermap
+      forecasts: "{{ weather_response['weather.openweathermap'].forecast }}"
+      wet_conditions:
+        - rainy
+        - pouring
+        - lightning-rainy
+        - snowy
+        - snowy-rainy
+        - hail
+  - action: panda_esl.write
+    target:
+      device_id: 02f83e543608fe720312585eaedf153c
+    data:
+      background: white
+      payload:
+        - type: rectangle
+          x_start: 0
+          y_start: 2
+          x_end: 255
+          y_end: 21
+          fill: black
+          outline: black
+        - type: text
+          value: "{{ now().strftime('%a %b %d') }}"
+          x: 126
+          "y": 12
+          size: 9
+          color: white
+          anchor: mm
+          font: fonts/GmarketSansTTFMedium.ttf
+        - type: icon
+          value: >-
+            {% set condition = states(weather_entity) %}{% if condition in
+            ['unknown', 'unavailable', 'none', ''] %}weather-cloudy{% else
+            %}weather-{{ condition }}{% endif %}
+          x: 48
+          "y": 56
+          size: 54
+          color: >-
+            {% set condition = states(weather_entity) %}{% set rain_chance =
+            forecasts[0].precipitation_probability if (forecasts | count) > 0
+            and forecasts[0].precipitation_probability is defined and
+            forecasts[0].precipitation_probability is not none else 0 %}{{ 'red'
+            if condition in wet_conditions or (rain_chance | float(0)) > 0 else
+            'black' }}
+          anchor: mm
+        - type: text
+          value: >-
+            {% set condition = states(weather_entity) %}{% if condition in
+            ['unknown', 'unavailable', 'none', ''] %}Weather{% else %}{{
+            condition | replace('partlycloudy', 'partly cloudy') | replace('-',
+            ' ') | title }}{% endif %}
+          x: 48
+          "y": 88
+          size: 10
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: >-
+            {% set temperature = state_attr(weather_entity, 'temperature') %}{{
+            temperature | round(0) | int if temperature is not none else '--' }}
+          x: 171
+          "y": 58
+          size: 47
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: "{{ state_attr(weather_entity, 'temperature_unit') | default('', true) }}"
+          x: 205
+          "y": 42
+          size: 13
+          color: black
+          anchor: lm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 0 and forecasts[0].temperature is
+            defined and forecasts[0].temperature is not none %}{% set high =
+            forecasts[0].temperature %}{% set low = forecasts[0].templow if
+            forecasts[0].templow is defined and forecasts[0].templow is not none
+            else none %}H {{ high | round(0) | int }}{% if low is not none %} /
+            L {{ low | round(0) | int }}{% endif %}{% endif %}
+          x: 178
+          "y": 86
+          size: 11
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: >-
+            {{ (forecasts | count) > 0 and forecasts[0].temperature is defined
+            and forecasts[0].temperature is not none }}
+        - type: line
+          x_start: 7
+          x_end: 249
+          y_start: 94
+          y_end: 94
+          width: 1
+          fill: black
+        - type: line
+          x_start: 86
+          x_end: 86
+          y_start: 98
+          y_end: 124
+          width: 1
+          fill: black
+        - type: line
+          x_start: 171
+          x_end: 171
+          y_start: 98
+          y_end: 124
+          width: 1
+          fill: black
+        - type: text
+          value: RAIN
+          x: 43
+          "y": 105
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: >-
+            {{ (forecasts | count) > 0 and
+            forecasts[0].precipitation_probability is defined and
+            forecasts[0].precipitation_probability is not none }}
+        - type: text
+          value: >-
+            {% if (forecasts | count) > 0 and
+            forecasts[0].precipitation_probability is defined and
+            forecasts[0].precipitation_probability is not none %}{{
+            forecasts[0].precipitation_probability | round(0) | int }}%{% endif %}
+          x: 43
+          "y": 119
+          size: 12
+          color: >-
+            {% set rain_chance = forecasts[0].precipitation_probability if
+            (forecasts | count) > 0 and forecasts[0].precipitation_probability
+            is defined and forecasts[0].precipitation_probability is not none
+            else 0 %}{{ 'red' if (rain_chance | float(0)) > 0 else 'black' }}
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: >-
+            {{ (forecasts | count) > 0 and
+            forecasts[0].precipitation_probability is defined and
+            forecasts[0].precipitation_probability is not none }}
+        - type: text
+          value: HUMIDITY
+          x: 129
+          "y": 105
+          size: 8
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ state_attr(weather_entity, 'humidity') is not none }}"
+        - type: text
+          value: >-
+            {% set humidity = state_attr(weather_entity, 'humidity') %}{% if
+            humidity is not none %}{{ humidity | round(0) | int }}%{% endif %}
+          x: 129
+          "y": 119
+          size: 12
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ state_attr(weather_entity, 'humidity') is not none }}"
+        - type: text
+          value: WIND
+          x: 213
+          "y": 105
+          size: 8
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ state_attr(weather_entity, 'wind_speed') is not none }}"
+        - type: text
+          value: >-
+            {% set wind = state_attr(weather_entity, 'wind_speed') %}{% if wind
+            is not none %}{{ wind | round(0) | int }} {{
+            state_attr(weather_entity, 'wind_speed_unit') | default('', true)
+            }}{% endif %}
+          x: 213
+          "y": 119
+          size: 10
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+          visible: "{{ state_attr(weather_entity, 'wind_speed') is not none }}"
+alias: PANDA ESL 2.13 - Weather Today
+description: ""

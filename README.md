@@ -168,6 +168,7 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 | Size | Example | Preview | YAML |
 | --- | --- | --- | --- |
 | 2.13" (256x128) | Calendar | ![Calendar example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/calendar.png) | [2.13" Calendar](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-calendar.yaml) |
+| 2.13" (256x128) | Weather today | ![Weather today example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather-today.png) | [2.13" Weather today](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-today.yaml) |
 | 2.13" (256x128) | Weather forecast | ![Weather forecast example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather.png) | [2.13" Weather forecast](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-forecast.yaml) |
 
 ## Use Cases
