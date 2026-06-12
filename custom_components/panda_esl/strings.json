@@ -4,6 +4,10 @@
       "name": "Write label",
       "description": "Write a rendered label image to a PANDA ESL device.",
       "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "PANDA ESL device to write."
+        },
         "payload": {
           "name": "Payload",
           "description": "Payload describing what to draw."
@@ -34,6 +38,10 @@
       "name": "Write guarded label",
       "description": "Write a rendered label image with duplicate, write-lock, and debounce guards.",
       "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "PANDA ESL device to write."
+        },
         "payload": {
           "name": "Payload",
           "description": "Payload describing what to draw."

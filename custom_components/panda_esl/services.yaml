@@ -1,8 +1,12 @@
 write:
-  target:
-    device:
-      - integration: panda_esl
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          filter:
+            - integration: panda_esl
+          multiple: true
     payload:
       required: true
       example: |
@@ -59,10 +63,14 @@ write:
       selector:
         boolean:
 write_guarded:
-  target:
-    device:
-      - integration: panda_esl
   fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          filter:
+            - integration: panda_esl
+          multiple: true
     payload:
       required: true
       example: |

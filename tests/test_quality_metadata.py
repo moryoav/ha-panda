@@ -100,12 +100,18 @@ def test_translations_cover_entities_services_and_exceptions() -> None:
 
 
 def test_services_target_panda_esl_devices() -> None:
-    """Services should target PANDA ESL devices using Home Assistant metadata."""
+    """Services should select PANDA ESL devices using Home Assistant metadata."""
     services = yaml.safe_load((INTEGRATION / "services.yaml").read_text(encoding="utf-8"))
 
     for service_name in ("write", "write_guarded"):
-        device_target = services[service_name]["target"]["device"]
-        assert device_target == [{"integration": "panda_esl"}]
+        assert "target" not in services[service_name]
+        device_selector = services[service_name]["fields"]["device_id"]["selector"][
+            "device"
+        ]
+        assert device_selector == {
+            "filter": [{"integration": "panda_esl"}],
+            "multiple": True,
+        }
 
 
 def test_icon_translations_cover_all_translated_entities() -> None:
