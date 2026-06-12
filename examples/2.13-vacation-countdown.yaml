@@ -1,0 +1,59 @@
+sequence:
+  - variables:
+      vacation_date: "2026-07-01"
+  - variables:
+      days_left: >-
+        {% set target = as_datetime(vacation_date) %}{% set days =
+        (target.date() - now().date()).days %}{{ 0 if days < 0 else days }}
+  - action: panda_esl.write
+    target:
+      device_id: 02f83e543608fe720312585eaedf153c
+    data:
+      background: white
+      payload:
+        - type: rectangle
+          x_start: 0
+          y_start: 0
+          x_end: 85
+          y_end: 127
+          fill: black
+          outline: black
+        - type: icon
+          value: airplane-takeoff
+          x: 42
+          "y": 64
+          size: 48
+          color: white
+          anchor: mm
+        - type: line
+          x_start: 86
+          x_end: 86
+          y_start: 0
+          y_end: 127
+          width: 1
+          fill: black
+        - type: text
+          value: "{{ days_left }}"
+          x: 171
+          "y": 55
+          size: 58
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: days left
+          x: 171
+          "y": 94
+          size: 17
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: line
+          x_start: 119
+          x_end: 223
+          y_start: 110
+          y_end: 110
+          width: 1
+          fill: black
+alias: PANDA ESL 2.13 - Vacation Countdown
+description: ""

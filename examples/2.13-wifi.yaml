@@ -1,0 +1,88 @@
+sequence:
+  - variables:
+      wifi_ssid: !secret panda_esl_wifi_ssid
+      wifi_password: !secret panda_esl_wifi_password
+      wifi_security: WPA2
+  - action: panda_esl.write
+    target:
+      device_id: 02f83e543608fe720312585eaedf153c
+    data:
+      background: white
+      payload:
+        - type: rectangle
+          x_start: 4
+          y_start: 4
+          x_end: 129
+          y_end: 127
+          outline: black
+          width: 1
+        - type: qrcode
+          data: "WIFI:T:{{ wifi_security }};S:{{ wifi_ssid }};P:{{ wifi_password }};;"
+          x: 8
+          "y": 8
+          boxsize: 3
+          border: 1
+          color: black
+          bgcolor: white
+        - type: line
+          x_start: 136
+          x_end: 136
+          y_start: 10
+          y_end: 120
+          width: 1
+          fill: black
+        - type: icon
+          value: wifi
+          x: 194
+          "y": 22
+          size: 20
+          color: red
+          anchor: mm
+        - type: text
+          value: WI-FI
+          x: 194
+          "y": 43
+          size: 23
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: line
+          x_start: 148
+          x_end: 240
+          y_start: 59
+          y_end: 59
+          width: 1
+          fill: black
+        - type: text
+          value: NETWORK
+          x: 194
+          "y": 74
+          size: 8
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: text
+          value: "{{ wifi_ssid }}"
+          x: 194
+          "y": 91
+          size: 15
+          color: black
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+        - type: rectangle
+          x_start: 145
+          y_start: 105
+          x_end: 244
+          y_end: 123
+          outline: red
+          width: 1
+        - type: text
+          value: SCAN TO JOIN
+          x: 194
+          "y": 115
+          size: 10
+          color: red
+          anchor: mm
+          font: fonts/GmarketSansTTFBold.ttf
+alias: PANDA ESL 2.13 - Wi-Fi QR
+description: ""
