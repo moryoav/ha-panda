@@ -30,12 +30,14 @@
     "bluetooth_adapters"
   ],
   "documentation": "https://github.com/moryoav/ha-panda",
+  "integration_type": "device",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/moryoav/ha-panda/issues",
+  "quality_scale": "gold",
   "requirements": [
     "qrcode[pil]==7.4.2",
     "python-barcode==0.15.1",
     "pyStrich==0.9"
   ],
-  "version": "0.1.4"
+  "version": "0.1.5"
 }

@@ -18,7 +18,7 @@ from homeassistant.components.bluetooth import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS, CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH
@@ -72,6 +72,36 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
+_COMMON_WRITE_SERVICE_SCHEMA = {
+    vol.Required("payload"): cv.ensure_list,
+    vol.Optional("rotate", default=0): vol.All(
+        vol.Coerce(int), vol.In([0, 90, 180, 270])
+    ),
+    vol.Optional("background", default="white"): vol.All(
+        cv.string, vol.Lower, vol.In(["white", "black", "red", "yellow"])
+    ),
+    vol.Optional("threshold", default=128): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=255)
+    ),
+    vol.Optional("red_threshold", default=128): vol.All(
+        vol.Coerce(int), vol.Range(min=0, max=255)
+    ),
+    vol.Optional("dry_run", default=False): cv.boolean,
+}
+WRITE_SERVICE_SCHEMA = vol.Schema(
+    _COMMON_WRITE_SERVICE_SCHEMA,
+    extra=vol.ALLOW_EXTRA,
+)
+WRITE_GUARDED_SERVICE_SCHEMA = vol.Schema(
+    {
+        **_COMMON_WRITE_SERVICE_SCHEMA,
+        vol.Optional("debounce_override_ms"): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=120000)
+        ),
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up PANDA ESL YAML imports."""
@@ -94,16 +124,17 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up PANDA ESL from a config entry."""
     address = entry.data[CONF_ADDRESS]
+    configured_name = entry.data.get(CONF_NAME) or entry.title
     last_service_info = bluetooth.async_last_service_info(
         hass, address, connectable=False
     )
 
     if last_service_info is not None:
         state = PandaEslState.from_service_info(last_service_info)
-        name = title_from_service_info(last_service_info)
+        name = configured_name or title_from_service_info(last_service_info)
     else:
-        state = PandaEslState(address=address, name=entry.title)
-        name = entry.title
+        state = PandaEslState(address=address, name=configured_name)
+        name = configured_name
 
     coordinator: DataUpdateCoordinator[PandaEslState] = DataUpdateCoordinator(
         hass,
@@ -148,7 +179,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     domain_data.setdefault(_SERVICE_LOCK, asyncio.Lock())
     options = {**entry.data, **entry.options}
     domain_data[entry.entry_id] = {
-        "runtime": runtime,
         "address": address,
         "device_id": device_entry.id,
         "last_image_data": None,
@@ -178,6 +208,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     @callback
     def _async_unavailable() -> None:
         """Handle the tag leaving the Bluetooth cache."""
+        if not runtime.availability_logged:
+            _LOGGER.info("PANDA ESL %s is unavailable", address)
+            runtime.availability_logged = True
         runtime.state.mark_unavailable()
         runtime.coordinator.async_set_updated_data(runtime.state)
 
@@ -229,9 +262,47 @@ def _async_register_services_once(hass: HomeAssistant) -> None:
     async def write_guarded_service(service: ServiceCall) -> None:
         await _async_handle_write_service(hass, service, guarded=True)
 
-    hass.services.async_register(DOMAIN, "write", write_service)
-    hass.services.async_register(DOMAIN, "write_guarded", write_guarded_service)
+    hass.services.async_register(
+        DOMAIN,
+        "write",
+        write_service,
+        schema=WRITE_SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "write_guarded",
+        write_guarded_service,
+        schema=WRITE_GUARDED_SERVICE_SCHEMA,
+    )
     domain_data[_SERVICES_REGISTERED] = True
+
+
+def _service_validation_error(
+    translation_key: str,
+    message: str,
+    **translation_placeholders: str,
+) -> ServiceValidationError:
+    """Return a translated service validation error."""
+    return ServiceValidationError(
+        message,
+        translation_domain=DOMAIN,
+        translation_key=translation_key,
+        translation_placeholders=translation_placeholders,
+    )
+
+
+def _service_error(
+    translation_key: str,
+    message: str,
+    **translation_placeholders: str,
+) -> HomeAssistantError:
+    """Return a translated service error."""
+    return HomeAssistantError(
+        message,
+        translation_domain=DOMAIN,
+        translation_key=translation_key,
+        translation_placeholders=translation_placeholders,
+    )
 
 
 def _normalize_device_ids(hass: HomeAssistant, service: ServiceCall) -> list[str]:
@@ -256,7 +327,10 @@ def _normalize_device_ids(hass: HomeAssistant, service: ServiceCall) -> list[str
     if len(loaded_device_ids) == 1:
         return loaded_device_ids
 
-    raise HomeAssistantError("Target device_id is required for panda_esl.write")
+    raise _service_validation_error(
+        "target_device_required",
+        "Target device_id is required for panda_esl.write",
+    )
 
 
 async def _entry_id_from_device_id(hass: HomeAssistant, device_id: str) -> str:
@@ -276,8 +350,10 @@ async def _entry_id_from_device_id(hass: HomeAssistant, device_id: str) -> str:
             if config_entry is not None and config_entry.domain == DOMAIN:
                 return config_entry_id
 
-    raise HomeAssistantError(
-        f"No loaded PANDA ESL config entry has device_id {device_id!r}"
+    raise _service_validation_error(
+        "device_not_loaded",
+        f"No loaded PANDA ESL config entry has device_id {device_id!r}",
+        device_id=device_id,
     )
 
 
@@ -285,7 +361,11 @@ def _entry_store(hass: HomeAssistant, entry_id: str) -> dict[str, Any]:
     """Return stored runtime data for an entry id."""
     store = hass.data.get(DOMAIN, {}).get(entry_id)
     if not isinstance(store, dict):
-        raise HomeAssistantError(f"PANDA ESL entry {entry_id!r} is not loaded")
+        raise _service_error(
+            "entry_not_loaded",
+            f"PANDA ESL entry {entry_id!r} is not loaded",
+            entry_id=entry_id,
+        )
     return store
 
 
@@ -308,10 +388,14 @@ async def _async_build_service_context(
 ) -> dict[str, Any]:
     """Render a service payload and build PANDA packets."""
     store = _entry_store(hass, entry_id)
-    runtime: PandaEslRuntimeData = store["runtime"]
     config_entry = hass.config_entries.async_get_entry(entry_id)
     if config_entry is None:
-        raise HomeAssistantError(f"PANDA ESL entry {entry_id!r} no longer exists")
+        raise _service_error(
+            "entry_missing",
+            f"PANDA ESL entry {entry_id!r} no longer exists",
+            entry_id=entry_id,
+        )
+    runtime: PandaEslRuntimeData = config_entry.runtime_data
 
     threshold = int(service.data.get("threshold", 128))
     red_threshold = int(service.data.get("red_threshold", 128))
@@ -535,3 +619,26 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             debouncer.async_shutdown()
 
     return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate PANDA ESL config entries."""
+    if entry.version == 1 and entry.minor_version < 2:
+        data = {**entry.data}
+        data.setdefault(CONF_NAME, entry.title)
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            version=1,
+            minor_version=2,
+        )
+    return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Allow removing the device associated with this config entry."""
+    return (DOMAIN, entry.data[CONF_ADDRESS]) in device_entry.identifiers

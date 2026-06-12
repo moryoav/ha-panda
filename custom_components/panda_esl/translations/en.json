@@ -1,7 +1,7 @@
 {
   "services": {
     "write": {
-      "name": "Write Label",
+      "name": "Write label",
       "description": "Write a rendered label image to a PANDA ESL device.",
       "fields": {
         "payload": {
@@ -17,21 +17,21 @@
           "description": "Background color (white, black, red, yellow). Yellow is mapped to red on PANDA hardware."
         },
         "threshold": {
-          "name": "Black Threshold",
+          "name": "Black threshold",
           "description": "Black binarization threshold (0-255). Default: 128."
         },
         "red_threshold": {
-          "name": "Red Threshold",
+          "name": "Red threshold",
           "description": "Red binarization threshold (0-255). Default: 128."
         },
         "dry_run": {
-          "name": "Dry Run",
+          "name": "Dry run",
           "description": "Generate the image preview without sending it to the device."
         }
       }
     },
     "write_guarded": {
-      "name": "Write Guarded Label",
+      "name": "Write guarded label",
       "description": "Write a rendered label image with duplicate, write-lock, and debounce guards.",
       "fields": {
         "payload": {
@@ -47,50 +47,80 @@
           "description": "Background color (white, black, red, yellow). Yellow is mapped to red on PANDA hardware."
         },
         "threshold": {
-          "name": "Black Threshold",
+          "name": "Black threshold",
           "description": "Black binarization threshold (0-255). Default: 128."
         },
         "red_threshold": {
-          "name": "Red Threshold",
+          "name": "Red threshold",
           "description": "Red binarization threshold (0-255). Default: 128."
         },
         "dry_run": {
-          "name": "Dry Run",
+          "name": "Dry run",
           "description": "Generate the image preview without sending it to the device."
         },
         "debounce_override_ms": {
-          "name": "Debounce Override",
+          "name": "Debounce override",
           "description": "Override the configured debounce delay for this call (0 = immediate)."
         }
       }
     }
   },
   "entity": {
+    "button": {
+      "white_fill": {
+        "name": "Send white fill"
+      },
+      "black_fill": {
+        "name": "Send black fill"
+      },
+      "red_fill": {
+        "name": "Send red fill"
+      },
+      "framed_image": {
+        "name": "Send framed image"
+      }
+    },
     "image": {
       "last_updated_content": {
-        "name": "Last Updated Content"
+        "name": "Last updated content"
       },
       "preview_content": {
-        "name": "Preview Content"
+        "name": "Preview content"
       }
     },
     "switch": {
       "write_lock": {
-        "name": "Write Lock"
+        "name": "Write lock"
       },
       "packet_notification_capture": {
-        "name": "Packet Notification Capture"
+        "name": "Packet notification capture"
       }
     }
   },
   "config": {
     "step": {
+      "bluetooth_confirm": {
+        "title": "Set up {name}",
+        "description": "Add this PANDA / ETAG electronic shelf label to Home Assistant."
+      },
       "user": {
         "title": "Set up PANDA ESL",
-        "description": "Enter the BLE address of the PANDA ESL tag.",
+        "description": "Select a discovered PANDA / ETAG electronic shelf label.",
         "data": {
-          "address": "BLE address",
-          "name": "Name"
+          "address": "Discovered label"
+        },
+        "data_description": {
+          "address": "Bluetooth label discovered by Home Assistant. Labels already configured are hidden."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure PANDA ESL",
+        "description": "Update the Home Assistant display name and refresh Bluetooth advertisement metadata for this label when it is currently visible.",
+        "data": {
+          "name": "Display name"
+        },
+        "data_description": {
+          "name": "Name Home Assistant should use for this label's device and entities."
         }
       }
     },
@@ -99,19 +129,22 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "no_devices_found": "No supported PANDA / ETAG labels were discovered",
+      "not_supported": "This Bluetooth device does not look like a supported PANDA / ETAG label",
+      "reconfigure_successful": "Reconfiguration successful"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "PANDA ESL Options",
+        "title": "PANDA ESL options",
         "description": "Adjust how rendered service images are written to the device.",
         "data": {
-          "retry_count": "Write Attempts",
-          "write_delay_ms": "Write Delay (ms)",
-          "prevent_duplicate_send": "Prevent Duplicate Send",
-          "debounce_ms": "Debounce Delay (ms)"
+          "retry_count": "Write attempts",
+          "write_delay_ms": "Write delay (ms)",
+          "prevent_duplicate_send": "Prevent duplicate send",
+          "debounce_ms": "Debounce delay (ms)"
         },
         "data_description": {
           "retry_count": "Maximum write attempts. 1 = no retry, 2 = retry once.",
@@ -120,6 +153,65 @@
           "debounce_ms": "Delay before writing to the device. New guarded writes cancel pending ones. 0 = disabled."
         }
       }
+    }
+  },
+  "exceptions": {
+    "target_device_required": {
+      "message": "Choose a PANDA ESL target device."
+    },
+    "device_not_loaded": {
+      "message": "No loaded PANDA ESL config entry matches device ID {device_id}."
+    },
+    "entry_not_loaded": {
+      "message": "PANDA ESL entry {entry_id} is not loaded."
+    },
+    "entry_missing": {
+      "message": "PANDA ESL entry {entry_id} no longer exists."
+    },
+    "no_ble_device": {
+      "message": "No connectable Bluetooth handle is available for {address}."
+    },
+    "ack_timeout": {
+      "message": "Timed out waiting for a PANDA acknowledgement: {label}."
+    },
+    "notify_start_failed": {
+      "message": "Failed to start PANDA notifications: {error}."
+    },
+    "write_failed": {
+      "message": "Failed to write the PANDA ESL image: {error}."
+    },
+    "missing_required_element_arguments": {
+      "message": "The {element_type} payload element is missing required argument(s): {arguments}."
+    },
+    "recorder_data_out_of_range": {
+      "message": "No recorder data exists in the requested range."
+    },
+    "invalid_data_url": {
+      "message": "The downloaded image element contains an invalid data URL."
+    },
+    "invalid_data_url_base64": {
+      "message": "The downloaded image element contains invalid base64 data."
+    },
+    "download_image_failed": {
+      "message": "Failed to download the image: {error}."
+    },
+    "payload_must_be_list": {
+      "message": "Payload must be a list of drawing elements."
+    },
+    "payload_element_must_be_object": {
+      "message": "Payload elements must be objects."
+    },
+    "invalid_polygon_points": {
+      "message": "The polygon points value is invalid: {points}."
+    },
+    "invalid_icon": {
+      "message": "The Material Design Icon name is invalid: {icon}."
+    },
+    "datamatrix_dependency_missing": {
+      "message": "Data Matrix rendering requires the pyStrich dependency."
+    },
+    "no_recorded_data": {
+      "message": "No recorder data was found for {entity_id}."
     }
   }
 }

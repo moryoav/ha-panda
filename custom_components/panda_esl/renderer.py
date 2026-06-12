@@ -24,6 +24,8 @@ from PIL import Image, ImageDraw, ImageFont
 import qrcode
 import requests
 
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
 WHITE = (255, 255, 255, 255)
@@ -43,6 +45,22 @@ def blank_png(width: int, height: int) -> bytes:
     output = BytesIO()
     image.save(output, "PNG")
     return output.getvalue()
+
+
+def _render_error(
+    translation_key: str,
+    message: str,
+    **translation_placeholders: Any,
+) -> HomeAssistantError:
+    """Return a translated renderer error."""
+    return HomeAssistantError(
+        message,
+        translation_domain=DOMAIN,
+        translation_key=translation_key,
+        translation_placeholders={
+            key: str(value) for key, value in translation_placeholders.items()
+        },
+    )
 
 
 def _nearest_eink_color(red: int, green: int, blue: int) -> tuple[int, int, int, int]:
@@ -114,8 +132,12 @@ def _check_required(
 ) -> None:
     missing = [key for key in required_keys if key not in element]
     if missing:
-        raise HomeAssistantError(
-            f"Missing required argument(s) '{', '.join(missing)}' in '{element_type}'"
+        missing_keys = ", ".join(missing)
+        raise _render_error(
+            "missing_required_element_arguments",
+            f"Missing required argument(s) '{missing_keys}' in '{element_type}'",
+            arguments=missing_keys,
+            element_type=element_type,
         )
 
 
@@ -130,7 +152,10 @@ def _is_decimal(value: Any) -> bool:
 
 def _min_max(data: list[float]) -> tuple[float, float]:
     if not data:
-        raise HomeAssistantError("data error, something is not in range of the recorder")
+        raise _render_error(
+            "recorder_data_out_of_range",
+            "Data error, something is not in range of the recorder",
+        )
     return min(data), max(data)
 
 
@@ -308,21 +333,31 @@ def _map_weather_icon(icon: str) -> str:
 
 def _load_dl_image(url: str) -> Image.Image:
     if url.startswith(("http://", "https://")):
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()
+        except requests.RequestException as err:
+            raise _render_error(
+                "download_image_failed",
+                f"Failed to download image: {err}",
+                error=err,
+            ) from err
         return Image.open(io.BytesIO(response.content))
 
     if url.startswith("data:"):
         payload = url[5:]
         if not payload or "," not in payload:
-            raise HomeAssistantError("invalid data url")
+            raise _render_error("invalid_data_url", "Invalid data URL")
         media_type, _, raw_data = payload.partition(",")
         if media_type.endswith(";base64"):
             raw_data += "=" * (-len(raw_data) % 4)
             try:
                 data = base64.b64decode(raw_data)
             except ValueError as exc:
-                raise HomeAssistantError("invalid base64 in data url") from exc
+                raise _render_error(
+                    "invalid_data_url_base64",
+                    "Invalid base64 in data URL",
+                ) from exc
         else:
             data = urllib.parse.unquote_to_bytes(raw_data)
         return Image.open(io.BytesIO(data))
@@ -339,7 +374,10 @@ def render_service_image(
     """Render a Gicisky-compatible service payload to a PANDA-sized RGB image."""
     payload = service_data.get("payload", [])
     if not isinstance(payload, list):
-        raise HomeAssistantError("payload must be a list of drawing elements")
+        raise _render_error(
+            "payload_must_be_list",
+            "Payload must be a list of drawing elements",
+        )
 
     rotate = _int(service_data.get("rotate", 0), 0)
     background = get_index_color(service_data.get("background", "white")) or WHITE
@@ -376,7 +414,10 @@ def render_service_image(
 
     for raw_element in payload:
         if not isinstance(raw_element, dict):
-            raise HomeAssistantError("payload elements must be objects")
+            raise _render_error(
+                "payload_element_must_be_object",
+                "Payload elements must be objects",
+            )
         element = raw_element
         element_type = str(element.get("type", ""))
         if not _visible(element):
@@ -617,8 +658,10 @@ def render_service_image(
                     x_raw, y_raw = pair.strip().split(",")
                     points.append((float(x_raw), float(y_raw)))
             except Exception as err:
-                raise HomeAssistantError(
-                    f"polygon: invalid points format '{element['points']}' - expected 'x1,y1;x2,y2;...'"
+                raise _render_error(
+                    "invalid_polygon_points",
+                    f"Polygon has invalid points format: {element['points']}",
+                    points=element["points"],
                 ) from err
             fill = get_index_color(element.get("fill"))
             outline = get_index_color(element.get("outline", "black"))
@@ -858,7 +901,11 @@ def render_service_image(
                     codepoint = icon["codepoint"]
                     break
             if not codepoint:
-                raise HomeAssistantError(f"Non valid icon used: {icon_value}")
+                raise _render_error(
+                    "invalid_icon",
+                    f"Non valid icon used: {icon_value}",
+                    icon=icon_value,
+                )
             font = ImageFont.truetype(
                 str(_FONT_DIR / "materialdesignicons-webfont.ttf"),
                 _int(element["size"]),
@@ -928,8 +975,9 @@ def render_service_image(
             try:
                 from pystrich.datamatrix import DataMatrixEncoder
             except ImportError as err:
-                raise HomeAssistantError(
-                    "datamatrix requires 'pyStrich'. Add 'pyStrich' to your requirements."
+                raise _render_error(
+                    "datamatrix_dependency_missing",
+                    "datamatrix requires 'pyStrich'",
                 ) from err
             encoder = DataMatrixEncoder(str(element["data"]))
             dm_image = Image.open(
@@ -1079,7 +1127,11 @@ def render_service_image(
             for plot in series:
                 entity_id = plot["entity"]
                 if entity_id not in all_states:
-                    raise HomeAssistantError(f"no recorded data found for {entity_id}")
+                    raise _render_error(
+                        "no_recorded_data",
+                        f"No recorded data found for {entity_id}",
+                        entity_id=entity_id,
+                    )
                 states = all_states[entity_id]
                 if states and not isinstance(states[0], dict):
                     states[0] = {

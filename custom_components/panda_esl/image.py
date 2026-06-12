@@ -6,6 +6,7 @@ import logging
 
 from homeassistant.components.image import Image, ImageEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -17,6 +18,8 @@ from .const import DOMAIN, MANUFACTURER, MODEL
 from .runtime import PandaEslRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
@@ -80,7 +83,7 @@ class PandaEslImageEntity(CoordinatorEntity[DataUpdateCoordinator[bytes]], Image
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
             model=MODEL,
-            name=self._entry.title,
+            name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )
 
     @property

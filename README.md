@@ -18,6 +18,20 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 
 The PANDA display supports white, black, and red output. The service syntax accepts `yellow` for compatibility with Gicisky payloads, but yellow is mapped to red when writing to PANDA hardware.
 
+## Supported Devices
+
+Known supported devices:
+
+- PANDA / ETAG 2.13 inch BLE electronic shelf labels that advertise as `ETAG-*`
+- Labels advertising PANDA service UUID `18424398-7cbc-11e9-8f9e-2a86e4005a59`
+- ETAG 525-style labels advertising service UUID `33323032-4c53-4545-4c42-4b4e494c4f57`
+
+Unsupported or unverified devices:
+
+- Wi-Fi or cloud-managed ESL labels
+- BLE labels that do not use the PANDA `AC ... CA` image packet protocol
+- Displays with a resolution other than 256x128
+
 ## Installation
 
 ### HACS
@@ -42,9 +56,37 @@ The PANDA display supports white, black, and red output. The service syntax acce
 
 The integration is configured through the Home Assistant UI. If Home Assistant discovers a supported PANDA / ETAG label over Bluetooth, select it from the discovered devices list. You can also start the config flow manually from **Settings** -> **Devices & services** -> **Add integration** -> **PANDA ESL**.
 
-## Services
+### Options
 
-The services intentionally mirror the Gicisky payload syntax, but use PANDA's BLE packet format when writing the rendered pixels.
+Open **Settings** -> **Devices & services** -> **PANDA ESL** -> **Configure** to adjust write behavior:
+
+| Option | Default | Description |
+| --- | ---: | --- |
+| Write attempts | `2` | Maximum whole-write attempts. `1` disables retry; `2` retries once. |
+| Write delay | `150 ms` | Delay between PANDA preamble packets. Image chunks advance on device progress notifications. |
+| Prevent duplicate send | `false` | Skip guarded writes when the rendered image matches the last rendered image. |
+| Debounce delay | `0 ms` | Delay guarded writes so newer writes can replace pending writes. `0` disables debounce. |
+
+Use **Reconfigure** from the integration entry menu to update the display name stored by the integration and refresh Bluetooth advertisement metadata when the label is currently visible.
+
+## Entities
+
+Each configured label creates one Home Assistant device.
+
+| Entity | Category | Enabled by default | Description |
+| --- | --- | --- | --- |
+| Last updated content | None | Yes | PNG image of the last payload successfully written to the label. |
+| Preview content | Diagnostic | Yes | PNG preview of the last rendered payload, including dry runs. |
+| Write lock | Configuration | Yes | Prevents `panda_esl.write_guarded` from physically writing to the label. |
+| Packet notification capture | Diagnostic | No | Writes detailed BLE packet and notification traces to `config/panda_esl_traces/`. |
+| Send white fill | Diagnostic | No | Sends a known-good full white diagnostic image. |
+| Send black fill | Diagnostic | No | Sends a known-good full black diagnostic image. |
+| Send red fill | Diagnostic | No | Sends a known-good full red diagnostic image. |
+| Send framed image | Diagnostic | No | Sends a framed diagnostic image for orientation and border checks. |
+
+## Actions
+
+The actions intentionally mirror the Gicisky payload syntax, but use PANDA's BLE packet format when writing the rendered pixels.
 
 ```yaml
 action: panda_esl.write
@@ -85,11 +127,31 @@ data:
       size: 24
 ```
 
+### Action Parameters
+
+| Parameter | Required | Description |
+| --- | --- | --- |
+| `payload` | Yes | List of drawing elements. See Supported Payload Elements below. |
+| `rotate` | No | Rotation in degrees: `0`, `90`, `180`, or `270`. |
+| `background` | No | `white`, `black`, `red`, or `yellow`. Yellow maps to red on PANDA hardware. |
+| `threshold` | No | Black threshold from `0` to `255`. Default is `128`. |
+| `red_threshold` | No | Red/yellow threshold from `0` to `255`. Default is `128`. |
+| `dry_run` | No | Render and update the preview without sending BLE packets. |
+| `debounce_override_ms` | No | `write_guarded` only. Overrides the configured debounce delay for this call. |
+
+`panda_esl.write` sends immediately. `panda_esl.write_guarded` applies duplicate prevention, write lock, and debounce settings before sending.
+
 ## Supported Payload Elements
 
 The renderer supports the same element names and field names used by `hass-gicisky`:
 
 `text`, `multiline`, `line`, `rectangle`, `rectangle_pattern`, `circle`, `ellipse`, `icon`, `dlimg`, `qrcode`, `barcode`, `datamatrix`, `diagram`, `plot`, `progress_bar`, `arc`, `gauge`, `polygon`, `table`, and `text_box`.
+
+## Data Updates
+
+PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write. The integration does not poll a cloud service.
+
+Writes use a connectable BLE handle at action time. If no connectable handle is available, Home Assistant raises a translated action error and records the failure in the diagnostic attributes.
 
 ## Examples
 
@@ -98,13 +160,42 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 - [2.13-calendar.yaml](examples/2.13-calendar.yaml): compact monthly calendar with Friday/Saturday in red and today highlighted.
 - [2.13-weather-forecast.yaml](examples/2.13-weather-forecast.yaml): OpenWeatherMap daily forecast row for today and the next few days.
 
-## Notes
+## Use Cases
+
+- Show a small daily calendar, weather forecast, or reminder on a shelf label.
+- Render QR codes, barcodes, and short status messages from Home Assistant automations.
+- Use `write_guarded` with debounce to prevent rapid repeated writes when multiple entities change together.
+- Use `dry_run` to preview a rendered payload before writing it to a physical label.
+
+## Known Limitations
 
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
 - PANDA image chunks are ACK-gated using device progress notifications. Writes retry the whole transfer at most once.
 - The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
-- Turn on the **Packet Notification Capture** diagnostic switch to write JSONL transfer traces under `config/panda_esl_traces/`. Entity attributes keep only the summary and latest trace file path.
+- The supported canvas size is 256x128 pixels.
+- Yellow payload colors are rendered as red on PANDA hardware.
+- A label must be visible to Home Assistant Bluetooth before a physical write can start.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.
+
+## Diagnostics and Troubleshooting
+
+Use **Download diagnostics** from the PANDA ESL device entry to collect redacted config, runtime state, and write summaries. Turn on the **Packet notification capture** diagnostic switch to write JSONL transfer traces under `config/panda_esl_traces/`. Entity attributes keep only the summary and latest trace file path.
+
+Common issues:
+
+| Symptom | What to check |
+| --- | --- |
+| No labels are discovered | Confirm a Bluetooth adapter is enabled, move the label closer, and wait for the label to advertise as `ETAG-*`. |
+| Write action fails with no connectable Bluetooth handle | Wait for a fresh advertisement, move closer to the adapter, or restart the label if possible. |
+| Rendered image is visible in Preview but not on the label | Disable Write lock, check that Packet notification capture does not show ACK timeouts, and try a diagnostic fill button. |
+| Plot element fails | Confirm Recorder is enabled and the referenced entity has numeric history in the requested time range. |
+
+## Removal
+
+1. Remove the PANDA ESL integration entry from **Settings** -> **Devices & services**.
+2. Restart Home Assistant if you plan to delete the custom component files.
+3. Remove `custom_components/panda_esl` from your Home Assistant config directory, or uninstall the integration from HACS.
+4. Optional: delete old packet trace files from `config/panda_esl_traces/`.
 
 ## Development
 

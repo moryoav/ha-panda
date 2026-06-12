@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5 - 2026-06-11
+
+- Add `quality_scale.yaml` tracking for Home Assistant gold quality-scale rules.
+- Add config-entry diagnostics, reconfiguration, translated entity/icon/exception metadata, and platform parallel update limits.
+- Improve availability logging, stale device removal handling, and guarded diagnostic entity defaults.
+- Expand README documentation with supported devices, entities, options, actions, troubleshooting, removal, and use cases.
+
 ## 0.1.4 - 2026-06-11
 
 - Move the integration icon into `custom_components/panda_esl/brand/` so Home Assistant can load local custom-integration branding.

@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -20,6 +21,8 @@ from .runtime import (
     async_write_red_fill,
     async_write_white_fill,
 )
+
+PARALLEL_UPDATES = 0
 
 WriteFn = Callable[[HomeAssistant, PandaEslRuntimeData], Awaitable[None]]
 
@@ -38,7 +41,6 @@ async def async_setup_entry(
                 entry,
                 runtime,
                 key="white_fill",
-                name="Send white fill",
                 write_fn=async_write_white_fill,
             ),
             PandaEslWriteButton(
@@ -46,7 +48,6 @@ async def async_setup_entry(
                 entry,
                 runtime,
                 key="black_fill",
-                name="Send black fill",
                 write_fn=async_write_black_fill,
             ),
             PandaEslWriteButton(
@@ -54,7 +55,6 @@ async def async_setup_entry(
                 entry,
                 runtime,
                 key="red_fill",
-                name="Send red fill",
                 write_fn=async_write_red_fill,
             ),
             PandaEslWriteButton(
@@ -62,7 +62,6 @@ async def async_setup_entry(
                 entry,
                 runtime,
                 key="framed_image",
-                name="Send framed image",
                 write_fn=async_write_nearfinal_framed_image,
             ),
         ]
@@ -74,6 +73,7 @@ class PandaEslWriteButton(CoordinatorEntity, ButtonEntity):
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
@@ -82,7 +82,6 @@ class PandaEslWriteButton(CoordinatorEntity, ButtonEntity):
         runtime: PandaEslRuntimeData,
         *,
         key: str,
-        name: str,
         write_fn: WriteFn,
     ) -> None:
         """Initialize the button."""
@@ -92,9 +91,14 @@ class PandaEslWriteButton(CoordinatorEntity, ButtonEntity):
         self._runtime = runtime
         self._key = key
         self._write_fn = write_fn
-        self._attr_name = name
+        self._attr_translation_key = key
         safe_address = runtime.state.address.replace(":", "").lower()
         self._attr_unique_id = f"{DOMAIN}_{safe_address}_{key}"
+
+    @property
+    def available(self) -> bool:
+        """Return true when the tag is visible to Home Assistant Bluetooth."""
+        return self._runtime.state.present
 
     async def async_press(self) -> None:
         """Send the selected image/fill."""
@@ -113,5 +117,5 @@ class PandaEslWriteButton(CoordinatorEntity, ButtonEntity):
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
             model=MODEL,
-            name=self._entry.title,
+            name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )

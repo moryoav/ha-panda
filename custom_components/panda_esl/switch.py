@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -18,6 +19,8 @@ from .const import (
     WRITE_LOCK,
 )
 from .runtime import PandaEslRuntimeData
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
@@ -40,7 +43,6 @@ class PandaEslWriteLockSwitch(RestoreEntity, SwitchEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "write_lock"
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_icon = "mdi:lock"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the write-lock switch."""
@@ -60,7 +62,7 @@ class PandaEslWriteLockSwitch(RestoreEntity, SwitchEntity):
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
             model=MODEL,
-            name=self._entry.title,
+            name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )
 
     @property
@@ -108,7 +110,7 @@ class PandaEslPacketNotificationCaptureSwitch(RestoreEntity, SwitchEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "packet_notification_capture"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_icon = "mdi:file-document-outline"
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the packet notification capture switch."""
@@ -130,7 +132,7 @@ class PandaEslPacketNotificationCaptureSwitch(RestoreEntity, SwitchEntity):
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
             model=MODEL,
-            name=self._entry.title,
+            name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )
 
     @property

@@ -9,7 +9,11 @@ import voluptuous as vol
 
 from homeassistant.components import bluetooth, onboarding
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlowWithReload
+from homeassistant.config_entries import (
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
@@ -79,6 +83,7 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PANDA ESL."""
 
     VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -153,7 +158,9 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({vol.Required(CONF_ADDRESS): vol.In(titles)}),
         )
 
-    async def async_step_import(self, import_config: dict[str, Any]) -> ConfigFlowResult:
+    async def async_step_import(
+        self, import_config: dict[str, Any]
+    ) -> ConfigFlowResult:
         """Import a PANDA ESL tag from YAML."""
         address = import_config[CONF_ADDRESS].upper()
         await self.async_set_unique_id(address)
@@ -173,9 +180,51 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
             title=title,
             data={
                 CONF_ADDRESS: address,
+                CONF_NAME: title,
                 CONF_DISCOVERED_NAME: import_config.get(CONF_NAME),
                 CONF_SERVICE_UUIDS: [],
             },
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle reconfiguration of a configured tag."""
+        entry = self._get_reconfigure_entry()
+        address = entry.data[CONF_ADDRESS]
+
+        if user_input is not None:
+            name = str(user_input[CONF_NAME]).strip()
+            await self.async_set_unique_id(address)
+            self._abort_if_unique_id_mismatch()
+
+            data_updates: dict[str, Any] = {CONF_NAME: name}
+            service_info = bluetooth.async_last_service_info(
+                self.hass, address, connectable=False
+            )
+            if service_info is not None and service_info_supported(service_info):
+                data_updates[CONF_DISCOVERED_NAME] = (
+                    service_info.name or getattr(service_info, "local_name", None)
+                )
+                data_updates[CONF_SERVICE_UUIDS] = sorted(
+                    uuid.lower() for uuid in service_info.service_uuids
+                )
+
+            return self.async_update_reload_and_abort(
+                entry,
+                data_updates=data_updates,
+            )
+
+        current_name = entry.data.get(CONF_NAME) or entry.title
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_NAME, default=current_name): vol.All(
+                        str, str.strip, vol.Length(min=1)
+                    )
+                }
+            ),
         )
 
     @staticmethod
@@ -192,6 +241,7 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
             title=title,
             data={
                 CONF_ADDRESS: self._discovery_info.address,
+                CONF_NAME: title,
                 CONF_DISCOVERED_NAME: self._discovery_info.name
                 or getattr(self._discovery_info, "local_name", None),
                 CONF_SERVICE_UUIDS: sorted(

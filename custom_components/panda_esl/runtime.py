@@ -22,7 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from PIL import Image
 
-from .const import TRACE_DIRECTORY
+from .const import DOMAIN, TRACE_DIRECTORY
 from .models import PandaEslState
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ class PandaEslRuntimeData:
     image_coordinator: DataUpdateCoordinator[bytes]
     preview_coordinator: DataUpdateCoordinator[bytes]
     packet_notification_capture: bool = False
+    availability_logged: bool = False
 
 
 def _safe_filename_part(value: str) -> str:
@@ -152,8 +153,27 @@ def update_from_service_info(
     runtime: PandaEslRuntimeData, service_info: BluetoothServiceInfoBleak
 ) -> None:
     """Apply an advertisement update and notify entities."""
+    if runtime.availability_logged:
+        _LOGGER.info("PANDA ESL %s is available again", service_info.address)
+        runtime.availability_logged = False
     runtime.state.update_from_service_info(service_info)
     runtime.coordinator.async_set_updated_data(runtime.state)
+
+
+def _translated_error(
+    translation_key: str,
+    message: str,
+    **translation_placeholders: Any,
+) -> HomeAssistantError:
+    """Return a translated Home Assistant error."""
+    return HomeAssistantError(
+        message,
+        translation_domain=DOMAIN,
+        translation_key=translation_key,
+        translation_placeholders={
+            key: str(value) for key, value in translation_placeholders.items()
+        },
+    )
 
 
 def _frame_image_chunks(plane: int, payload: bytes) -> list[bytes]:
@@ -450,7 +470,7 @@ async def _async_send_packets_attempt(
         message = "No connectable BLE device handle is available"
         runtime.state.update_write_action(action_key, result_name + "_error", message)
         runtime.coordinator.async_set_updated_data(runtime.state)
-        raise HomeAssistantError(message)
+        raise _translated_error("no_ble_device", message, address=address)
 
     capture_trace = runtime.packet_notification_capture
     trace_started_at = datetime.now(timezone.utc)
@@ -521,12 +541,18 @@ async def _async_send_packets_attempt(
                     return
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise HomeAssistantError(f"Timed out waiting for PANDA ACK: {label}")
+                    raise _translated_error(
+                        "ack_timeout",
+                        f"Timed out waiting for PANDA ACK: {label}",
+                        label=label,
+                    )
                 try:
                     await asyncio.wait_for(ack_event.wait(), remaining)
                 except TimeoutError as err:
-                    raise HomeAssistantError(
-                        f"Timed out waiting for PANDA ACK: {label}"
+                    raise _translated_error(
+                        "ack_timeout",
+                        f"Timed out waiting for PANDA ACK: {label}",
+                        label=label,
                     ) from err
 
         async def _wait_for_chunk_progress(cycle: int, chunk_index: int) -> None:
@@ -553,8 +579,10 @@ async def _async_send_packets_attempt(
             await asyncio.sleep(0.2)
         except Exception as err:  # noqa: BLE001
             notifications.append(f"notify_start_error:{type(err).__name__}:{err}")
-            raise HomeAssistantError(
-                f"Failed to start PANDA notifications for ACK flow: {err}"
+            raise _translated_error(
+                "notify_start_failed",
+                f"Failed to start PANDA notifications for ACK flow: {err}",
+                error=err,
             ) from err
 
         characteristic_info: dict[str, Any] = {}
@@ -822,7 +850,13 @@ async def _async_send_packets_attempt(
             details=error_details,
         )
         runtime.coordinator.async_set_updated_data(runtime.state)
-        raise HomeAssistantError(f"Failed to write PANDA ESL image: {err}") from err
+        if isinstance(err, HomeAssistantError):
+            raise
+        raise _translated_error(
+            "write_failed",
+            f"Failed to write PANDA ESL image: {err}",
+            error=err,
+        ) from err
     finally:
         if client is not None and client.is_connected:
             await client.disconnect()

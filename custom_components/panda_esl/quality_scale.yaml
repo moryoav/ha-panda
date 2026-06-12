@@ -1,0 +1,70 @@
+rules:
+  action_setup: done
+  appropriate_polling:
+    status: exempt
+    comment: The integration is local push through Bluetooth callbacks and does not poll.
+  brands: done
+  common_modules: done
+  config_flow_test_coverage:
+    status: exempt
+    comment: Custom HACS repository; Home Assistant Core quality-scale test harness is not part of this package.
+  config_flow: done
+  dependency_transparency: done
+  docs_actions: done
+  docs_high_level_description: done
+  docs_installation_instructions: done
+  docs_removal_instructions: done
+  entity_event_setup: done
+  entity_unique_id: done
+  has_entity_name: done
+  runtime_data: done
+  test_before_configure: done
+  test_before_setup:
+    status: exempt
+    comment: Passive BLE labels may be offline during startup; setup registers callbacks and becomes available when advertisements resume.
+  unique_config_entry: done
+
+  action_exceptions: done
+  config_entry_unloading: done
+  docs_configuration_parameters: done
+  docs_installation_parameters: done
+  entity_unavailable: done
+  integration_owner: done
+  log_when_unavailable: done
+  parallel_updates: done
+  reauthentication_flow:
+    status: exempt
+    comment: PANDA ESL labels do not authenticate with credentials or tokens.
+  test_coverage:
+    status: exempt
+    comment: Custom HACS repository; Home Assistant Core 95% coverage gate is not available in this package.
+
+  devices: done
+  diagnostics: done
+  discovery_update_info:
+    status: exempt
+    comment: Bluetooth discovery has no mutable network address to update; advertisement metadata is refreshed during setup and reconfigure.
+  discovery: done
+  docs_data_update: done
+  docs_examples: done
+  docs_known_limitations: done
+  docs_supported_devices: done
+  docs_supported_functions: done
+  docs_troubleshooting: done
+  docs_use_cases: done
+  dynamic_devices:
+    status: exempt
+    comment: Each config entry represents one physical label; additional labels are added by discovery/config flow.
+  entity_category: done
+  entity_device_class:
+    status: exempt
+    comment: The integration exposes button, switch, and image entities without applicable device classes.
+  entity_disabled_by_default: done
+  entity_translations: done
+  exception_translations: done
+  icon_translations: done
+  reconfiguration_flow: done
+  repair_issues:
+    status: exempt
+    comment: There is no integration-specific actionable repair condition beyond Home Assistant Bluetooth adapter repairs.
+  stale_devices: done

@@ -16,3 +16,4 @@ custom_components/*.zip
 deps/
 tts/
 home-assistant.log*
+agents.md

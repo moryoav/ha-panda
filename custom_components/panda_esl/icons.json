@@ -1,0 +1,34 @@
+{
+  "entity": {
+    "button": {
+      "white_fill": {
+        "default": "mdi:format-color-fill"
+      },
+      "black_fill": {
+        "default": "mdi:format-color-fill"
+      },
+      "red_fill": {
+        "default": "mdi:format-color-fill"
+      },
+      "framed_image": {
+        "default": "mdi:image-frame"
+      }
+    },
+    "image": {
+      "last_updated_content": {
+        "default": "mdi:image"
+      },
+      "preview_content": {
+        "default": "mdi:image-search"
+      }
+    },
+    "switch": {
+      "write_lock": {
+        "default": "mdi:lock"
+      },
+      "packet_notification_capture": {
+        "default": "mdi:file-document-outline"
+      }
+    }
+  }
+}
