@@ -165,8 +165,10 @@ The Write progress sensor resets to 0% when a physical write attempt starts, adv
 
 Example scripts for the 256x128 PANDA display live in [examples](examples/).
 
-- [2.13-calendar.yaml](examples/2.13-calendar.yaml): compact monthly calendar with Friday/Saturday in red and today highlighted.
-- [2.13-weather-forecast.yaml](examples/2.13-weather-forecast.yaml): OpenWeatherMap daily forecast row for today and the next few days.
+| Size | Example | Preview | YAML |
+| --- | --- | --- | --- |
+| 2.13" (256x128) | Calendar | ![Calendar example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/calendar.png) | [2.13" Calendar](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-calendar.yaml) |
+| 2.13" (256x128) | Weather forecast | ![Weather forecast example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather.png) | [2.13" Weather forecast](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-forecast.yaml) |
 
 ## Use Cases
 
