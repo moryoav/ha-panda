@@ -1,4 +1,5 @@
 # PANDA ESL for Home Assistant
+
 [![HACS Custom][hacs-badge]][hacs-url] [![Home Assistant 2024.6+][ha-badge]][ha-url] [![Release][release-badge]][release-url] [![Local Push][iot-badge]][iot-url] [![License: MIT][license-badge]][license-url] [hacs-badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square [hacs-url]: https://www.hacs.xyz/ [ha-badge]: https://img.shields.io/badge/Home%20Assistant-2024.6%2B-18BCF2.svg?style=flat-square&logo=homeassistant&logoColor=white [ha-url]: https://www.home-assistant.io/ [release-badge]: https://img.shields.io/badge/release-latest-blue.svg?style=flat-square [release-url]: https://github.com/moryoav/ha-panda/releases/latest [iot-badge]: https://img.shields.io/badge/IoT-local%20push-41BDF5.svg?style=flat-square [iot-url]: https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/iot-class/ [license-badge]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square [license-url]: https://github.com/moryoav/ha-panda/blob/main/LICENSE
 
 Home Assistant custom integration for PANDA / ETAG BLE electronic shelf labels.
