@@ -253,12 +253,13 @@ async def test_retry_count_zero_does_not_resend_failed_chunk(
 
 
 @pytest.mark.usefixtures("retry_test_setup")
-async def test_chunk_ack_timeout_retries_same_chunk_without_replaying_preamble(
+async def test_chunk_ack_timeout_uses_whole_write_retry(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A missed chunk ACK resends only that chunk inside the same write attempt."""
-    client = FakeBleClient(drop_once={(0, 1)})
-    _install_clients(monkeypatch, [client])
+    """A missed chunk ACK retries the whole write instead of duplicating a chunk."""
+    failing_client = FakeBleClient(always_drop={(0, 1)})
+    successful_client = FakeBleClient()
+    used_clients = _install_clients(monkeypatch, [failing_client, successful_client])
     runtime, _coordinator = _runtime_data()
 
     await panda_runtime._async_send_packets(
@@ -272,30 +273,27 @@ async def test_chunk_ack_timeout_retries_same_chunk_without_replaying_preamble(
         retry_count=1,
     )
 
-    assert _image_write_keys(client) == [(0, 0), (0, 1), (0, 1)]
-    assert sum(
-        1
-        for packet in client.writes
-        if panda_runtime._decode_packet(packet).get("kind") == "preamble"
-    ) == len(panda_runtime._STANDARD_PREAMBLE)
+    assert used_clients == [failing_client, successful_client]
+    assert _image_write_keys(failing_client) == [(0, 0), (0, 1)]
+    assert _image_write_keys(successful_client) == [(0, 0), (0, 1)]
     attrs = runtime.state.write_action_results["test"]
     assert attrs["retry_count"] == 1
-    assert attrs["chunk_retry_count"] == 1
+    assert attrs["chunk_retry_count"] == 0
     assert attrs["image_packets_confirmed"] == 2
     assert runtime.state.write_progress_chunks_written == 2
 
 
 @pytest.mark.usefixtures("retry_test_setup")
-async def test_failed_chunk_uses_configured_local_retry_count(
+async def test_failed_chunk_uses_configured_whole_write_retry_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A persistent chunk timeout is resent exactly retry_count times locally."""
-    client = FakeBleClient(always_drop={(0, 1)})
-    _install_clients(monkeypatch, [client])
+    """A persistent chunk timeout creates retry_count extra write attempts."""
+    clients = [FakeBleClient(always_drop={(0, 1)}) for _ in range(4)]
+    used_clients = _install_clients(monkeypatch, clients[:])
     runtime, _coordinator = _runtime_data()
 
     with pytest.raises(HomeAssistantError):
-        await panda_runtime._async_send_packets_attempt(
+        await panda_runtime._async_send_packets(
             FakeHass(),
             runtime,
             packets=_packets(),
@@ -303,12 +301,12 @@ async def test_failed_chunk_uses_configured_local_retry_count(
             result_name="write_test_ok",
             details={},
             write_delay_ms=0,
-            attempt=1,
             retry_count=3,
-            max_attempts=1,
         )
 
-    assert _image_write_keys(client) == [(0, 0), (0, 1), (0, 1), (0, 1), (0, 1)]
+    assert used_clients == clients
+    for client in used_clients:
+        assert _image_write_keys(client) == [(0, 0), (0, 1)]
 
 
 @pytest.mark.usefixtures("retry_test_setup")

@@ -69,7 +69,7 @@ Open **Settings** -> **Devices & services** -> **PANDA ESL** -> **Configure** to
 
 | Option | Default | Description |
 | --- | ---: | --- |
-| Write retries | `1` | Retries after the first send. `0` disables retries; higher values retry failed chunks or whole writes when needed. |
+| Write retries | `1` | Full write retries after the first send. `0` disables retries. |
 | Write delay | `150 ms` | Delay between PANDA preamble packets. Image chunks advance on device progress notifications. |
 | Prevent duplicate send | `false` | Skip guarded writes when the rendered image matches the last rendered image. |
 | Debounce delay | `0 ms` | Delay guarded writes so newer writes can replace pending writes. `0` disables debounce. |
@@ -188,7 +188,7 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 ## Known Limitations
 
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
-- PANDA image chunks are ACK-gated using device progress notifications. Timed-out chunks are retried in-place before falling back to a full write retry.
+- PANDA image chunks are ACK-gated using device progress notifications. A timed-out chunk aborts the current connection and uses the configured full write retry.
 - The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
 - The supported canvas size is 256x128 pixels.
 - Yellow payload colors are rendered as red on PANDA hardware.

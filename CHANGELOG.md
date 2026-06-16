@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.11 - 2026-06-16
+
+- Disable in-place chunk retries after traces showed duplicate chunk writes can stall transfers and leave labels unable to start the next write.
+- Keep the write retry option as retries after the first send, but apply it to full write attempts.
+
 ## 0.1.10 - 2026-06-16
 
 - Restore preview and last-updated image entities after Home Assistant restarts.

@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.10"
+    assert manifest["version"] == "0.1.11"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
 
@@ -134,7 +134,7 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.10 - 2026-06-16" in changelog
+    assert "## 0.1.11 - 2026-06-16" in changelog
     assert "restore" in changelog.lower()
     assert "Bluetooth RSSI" in readme
     assert "Write progress" in readme
