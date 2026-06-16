@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.9 - 2026-06-16
+
+- Add a Bluetooth RSSI diagnostic sensor that reports the latest advertised signal strength in dBm.
+
 ## 0.1.8 - 2026-06-16
 
 - Retry timed-out image chunks inside the active BLE write before falling back to a full write retry.

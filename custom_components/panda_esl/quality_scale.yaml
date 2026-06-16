@@ -58,7 +58,7 @@ rules:
   entity_category: done
   entity_device_class:
     status: exempt
-    comment: The integration exposes button, switch, image, and percentage progress sensor entities without applicable device classes.
+    comment: The Bluetooth RSSI sensor uses the signal strength device class; other exposed entities have no applicable device class.
   entity_disabled_by_default: done
   entity_translations: done
   exception_translations: done

@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.8"
+    assert manifest["version"] == "0.1.9"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
 
@@ -85,7 +85,10 @@ def test_translations_cover_entities_services_and_exceptions() -> None:
         "last_updated_content",
         "preview_content",
     }
-    assert set(strings["entity"]["sensor"]) == {"write_progress"}
+    assert set(strings["entity"]["sensor"]) == {
+        "write_progress",
+        "bluetooth_rssi",
+    }
     assert set(strings["entity"]["switch"]) == {
         "write_lock",
         "packet_notification_capture",
@@ -131,7 +134,8 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.8 - 2026-06-16" in changelog
+    assert "## 0.1.9 - 2026-06-16" in changelog
+    assert "Bluetooth RSSI" in readme
     assert "Write progress" in readme
     assert "Write retries" in readme
     assert "Download diagnostics" in readme

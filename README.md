@@ -13,6 +13,7 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 - `panda_esl.write_guarded` service with duplicate, write-lock, and debounce guards
 - Preview and last-updated image entities
 - Write progress percentage sensor updated after each acknowledged image chunk
+- Bluetooth RSSI diagnostic sensor from the latest Home Assistant Bluetooth advertisement
 - Write-lock switch
 - Packet notification capture switch for BLE transfer diagnostics
 - Bundled fonts and Material Design Icons support
@@ -83,6 +84,7 @@ Each configured label creates one Home Assistant device.
 | Last updated content | None | Yes | PNG image of the last payload successfully written to the label. |
 | Preview content | Diagnostic | Yes | PNG preview of the last rendered payload, including dry runs. |
 | Write progress | None | Yes | Percentage progress for the active or most recent BLE image write, with chunk counts as attributes. |
+| Bluetooth RSSI | Diagnostic | Yes | Latest advertised Bluetooth signal strength in dBm. |
 | Write lock | Configuration | Yes | Prevents `panda_esl.write_guarded` from physically writing to the label. |
 | Packet notification capture | Diagnostic | No | Writes detailed BLE packet and notification traces to `config/panda_esl_traces/`. |
 | Send white fill | Diagnostic | No | Sends a known-good full white diagnostic image. |
@@ -156,6 +158,8 @@ The renderer supports the same element names and field names used by `hass-gicis
 ## Data Updates
 
 PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write. The integration does not poll a cloud service.
+
+The Bluetooth RSSI sensor updates from the latest advertisement Home Assistant receives for the label. It is a last-advertised signal value in dBm, not a continuously measured connection-quality percentage.
 
 Writes use a connectable BLE handle at action time. If no connectable handle is available, Home Assistant raises a translated action error and records the failure in the diagnostic attributes.
 

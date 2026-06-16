@@ -25,6 +25,9 @@
     "sensor": {
       "write_progress": {
         "default": "mdi:progress-upload"
+      },
+      "bluetooth_rssi": {
+        "default": "mdi:bluetooth"
       }
     },
     "switch": {

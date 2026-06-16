@@ -99,6 +99,9 @@
     "sensor": {
       "write_progress": {
         "name": "Write progress"
+      },
+      "bluetooth_rssi": {
+        "name": "Bluetooth RSSI"
       }
     },
     "switch": {
