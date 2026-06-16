@@ -12,6 +12,7 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 - `panda_esl.write` service compatible with the `gicisky.write` payload syntax
 - `panda_esl.write_guarded` service with duplicate, write-lock, and debounce guards
 - Preview and last-updated image entities
+- Preview and last-updated images restore after Home Assistant restarts
 - Write progress percentage sensor updated after each acknowledged image chunk
 - Bluetooth RSSI diagnostic sensor from the latest Home Assistant Bluetooth advertisement
 - Write-lock switch
@@ -157,7 +158,7 @@ The renderer supports the same element names and field names used by `hass-gicis
 
 ## Data Updates
 
-PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write. The integration does not poll a cloud service.
+PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write, and Home Assistant restores their last retained images after restarts. The integration does not poll a cloud service.
 
 The Bluetooth RSSI sensor updates from the latest advertisement Home Assistant receives for the label. It is a last-advertised signal value in dBm, not a continuously measured connection-quality percentage.
 

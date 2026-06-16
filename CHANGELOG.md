@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.10 - 2026-06-16
+
+- Restore preview and last-updated image entities after Home Assistant restarts.
+
 ## 0.1.9 - 2026-06-16
 
 - Add a Bluetooth RSSI diagnostic sensor that reports the latest advertised signal strength in dBm.
