@@ -35,6 +35,7 @@ from .const import (
     DEFAULT_RETRY_COUNT,
     DEFAULT_WRITE_DELAY_MS,
     DOMAIN,
+    MAX_RETRY_COUNT,
     ETAG_525_SERVICE_UUID,
     MANUFACTURER,
     MODEL,
@@ -464,9 +465,9 @@ async def _async_execute_service_write(
     runtime: PandaEslRuntimeData = context["runtime"]
     store = context["store"]
     options = context["options"]
-    max_attempts = max(
-        1,
-        min(int(options.get(CONF_RETRY_COUNT, DEFAULT_RETRY_COUNT)), 2),
+    retry_count = max(
+        0,
+        min(int(options.get(CONF_RETRY_COUNT, DEFAULT_RETRY_COUNT)), MAX_RETRY_COUNT),
     )
     write_delay_ms = int(options.get(CONF_WRITE_DELAY_MS, DEFAULT_WRITE_DELAY_MS))
 
@@ -478,7 +479,7 @@ async def _async_execute_service_write(
         result_name="write_service_ok",
         details=context["details"],
         write_delay_ms=write_delay_ms,
-        max_attempts=max_attempts,
+        retry_count=retry_count,
     )
     runtime.image_coordinator.async_set_updated_data(context["current_image_data"])
     store["last_image_data"] = context["current_image_data"]

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8 - 2026-06-16
+
+- Retry timed-out image chunks inside the active BLE write before falling back to a full write retry.
+- Change the write retry option so `0` disables retries and higher values count retries after the first send.
+
 ## 0.1.7 - 2026-06-12
 
 - Add a write progress sensor that reports BLE image transfer progress from 0 to 100%.

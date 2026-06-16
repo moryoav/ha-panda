@@ -154,13 +154,13 @@
         "title": "PANDA ESL options",
         "description": "Adjust how rendered service images are written to the device.",
         "data": {
-          "retry_count": "Write attempts",
+          "retry_count": "Write retries",
           "write_delay_ms": "Write delay (ms)",
           "prevent_duplicate_send": "Prevent duplicate send",
           "debounce_ms": "Debounce delay (ms)"
         },
         "data_description": {
-          "retry_count": "Maximum write attempts. 1 = no retry, 2 = retry once.",
+          "retry_count": "Retries after the first send. 0 disables retries; higher values retry failed chunks or whole writes when needed.",
           "write_delay_ms": "Delay between PANDA preamble packets. Image chunks wait for device progress notifications.",
           "prevent_duplicate_send": "Skip guarded writes when the new image is identical to the last rendered image.",
           "debounce_ms": "Delay before writing to the device. New guarded writes cancel pending ones. 0 = disabled."

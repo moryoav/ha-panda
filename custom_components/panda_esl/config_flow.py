@@ -34,14 +34,15 @@ from .const import (
     DEFAULT_RETRY_COUNT,
     DEFAULT_WRITE_DELAY_MS,
     DOMAIN,
+    MAX_RETRY_COUNT,
 )
 from .models import service_info_supported, title_from_service_info
 
 OPTIONS_SCHEMA = {
     vol.Required(CONF_RETRY_COUNT, default=DEFAULT_RETRY_COUNT): NumberSelector(
         NumberSelectorConfig(
-            min=1,
-            max=2,
+            min=0,
+            max=MAX_RETRY_COUNT,
             step=1,
             mode=NumberSelectorMode.BOX,
         )

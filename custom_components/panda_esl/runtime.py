@@ -22,7 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from PIL import Image
 
-from .const import DOMAIN, TRACE_DIRECTORY
+from .const import DEFAULT_RETRY_COUNT, DOMAIN, MAX_RETRY_COUNT, TRACE_DIRECTORY
 from .models import PandaEslState
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,7 +35,6 @@ PANDA_CHUNK_PAYLOAD_SIZE = 50
 PANDA_WRITE_DELAY_MS = 150
 PANDA_CANVAS_WIDTH = 256
 PANDA_CANVAS_HEIGHT = 128
-PANDA_ACK_MAX_ATTEMPTS = 2
 PANDA_ACK_CHUNK_TIMEOUT_S = 5.0
 PANDA_ACK_FINAL_TIMEOUT_S = 10.0
 PANDA_ACK_INTER_PACKET_DELAY_MS = 10
@@ -124,6 +123,11 @@ def _write_progress_percent(
         return 0.0
     confirmed_chunks = max(0, min(chunks_written, chunks_total))
     return round(min((confirmed_chunks / (chunks_total + 1)) * 100, 99.9), 1)
+
+
+def _bounded_retry_count(retry_count: int) -> int:
+    """Return a retry count within the supported option range."""
+    return max(0, min(int(retry_count), MAX_RETRY_COUNT))
 
 
 def _write_packet_trace_file(
@@ -483,7 +487,8 @@ async def _async_send_packets_attempt(
     details: dict[str, Any],
     write_delay_ms: int = PANDA_WRITE_DELAY_MS,
     attempt: int = 1,
-    max_attempts: int = PANDA_ACK_MAX_ATTEMPTS,
+    retry_count: int = DEFAULT_RETRY_COUNT,
+    max_attempts: int = DEFAULT_RETRY_COUNT + 1,
 ) -> None:
     """Send packets using PANDA notification ACK-gated flow control."""
     address = runtime.state.address
@@ -516,6 +521,10 @@ async def _async_send_packets_attempt(
     final_ack_seen = False
     ack_event = asyncio.Event()
     notifications: list[str] = []
+    image_packets_written = 0
+    image_packets_confirmed = 0
+    bytes_written = 0
+    chunk_retry_count = 0
     client: BleakClient | None = None
     try:
         client = await establish_connection(BleakClient, ble_device, address)
@@ -630,12 +639,11 @@ async def _async_send_packets_attempt(
             }
 
         preamble_len = len(_STANDARD_PREAMBLE)
-        image_packets_written = 0
-        image_packets_confirmed = 0
         image_ack_cycle = -1
         for packet_index, packet in enumerate(packets):
             decoded_packet = _decode_packet(packet)
             expected_ack_cycle: int | None = None
+            is_image_chunk = decoded_packet.get("kind") == "image_chunk"
             if decoded_packet.get("kind") == "image_chunk":
                 if decoded_packet["chunk_index"] == 0:
                     image_ack_cycle += 1
@@ -643,84 +651,123 @@ async def _async_send_packets_attempt(
             elif decoded_packet.get("kind") == "commit":
                 final_ack_seen = False
 
-            if capture_trace:
-                if packet_index < preamble_len:
-                    stage = "preamble"
-                elif packet_index == len(packets) - 1:
-                    stage = "final"
-                else:
-                    stage = "image"
-                current_packet_event = {
-                    "packet_index": packet_index,
-                    "stage": stage,
-                    "relative_start_ms": round(
-                        (time.monotonic() - trace_started_monotonic) * 1000, 3
-                    ),
-                    "packet_len": len(packet),
-                    "packet_hex": packet.hex(),
-                    "decoded": decoded_packet,
-                    "ack_cycle": expected_ack_cycle,
-                    "notifications": [],
-                }
-            await client.write_gatt_char(PANDA_FFE1_CHAR_UUID, packet, response=False)
-            if capture_trace and current_packet_event is not None:
-                current_packet_event["relative_write_return_ms"] = round(
-                    (time.monotonic() - trace_started_monotonic) * 1000, 3
-                )
-            if preamble_len <= packet_index < len(packets) - 1:
-                image_packets_written += 1
-
-            if decoded_packet.get("kind") == "image_chunk":
-                assert expected_ack_cycle is not None
-                await _wait_for_chunk_progress(
-                    expected_ack_cycle,
-                    int(decoded_packet["chunk_index"]),
-                )
-                image_packets_confirmed += 1
-                runtime.state.update_write_progress(
-                    _write_progress_percent(
-                        image_packets_confirmed, image_packet_total
-                    ),
-                    chunks_written=image_packets_confirmed,
-                    chunks_total=image_packet_total,
-                    attempt=attempt,
-                    active=True,
-                )
-                runtime.coordinator.async_set_updated_data(runtime.state)
+            chunk_retry_attempt = 0
+            while True:
+                if capture_trace:
+                    if packet_index < preamble_len:
+                        stage = "preamble"
+                    elif packet_index == len(packets) - 1:
+                        stage = "final"
+                    else:
+                        stage = "image"
+                    current_packet_event = {
+                        "packet_index": packet_index,
+                        "stage": stage,
+                        "relative_start_ms": round(
+                            (time.monotonic() - trace_started_monotonic) * 1000, 3
+                        ),
+                        "packet_len": len(packet),
+                        "packet_hex": packet.hex(),
+                        "decoded": decoded_packet,
+                        "ack_cycle": expected_ack_cycle,
+                        "notifications": [],
+                    }
+                    if is_image_chunk:
+                        current_packet_event["chunk_retry_attempt"] = chunk_retry_attempt
+                await client.write_gatt_char(PANDA_FFE1_CHAR_UUID, packet, response=False)
+                bytes_written += len(packet)
                 if capture_trace and current_packet_event is not None:
-                    current_packet_event["ack_received_ms"] = round(
+                    current_packet_event["relative_write_return_ms"] = round(
                         (time.monotonic() - trace_started_monotonic) * 1000, 3
                     )
-                if PANDA_ACK_INTER_PACKET_DELAY_MS:
-                    await asyncio.sleep(PANDA_ACK_INTER_PACKET_DELAY_MS / 1000)
-            elif decoded_packet.get("kind") == "commit":
-                await _wait_for_final_ack()
-                runtime.state.update_write_progress(
-                    _write_progress_percent(
-                        image_packets_confirmed, image_packet_total, final_ack=True
-                    ),
-                    chunks_written=image_packets_confirmed,
-                    chunks_total=image_packet_total,
-                    attempt=attempt,
-                    active=False,
-                )
-                runtime.coordinator.async_set_updated_data(runtime.state)
+                if preamble_len <= packet_index < len(packets) - 1:
+                    image_packets_written += 1
+
+                try:
+                    if is_image_chunk:
+                        assert expected_ack_cycle is not None
+                        await _wait_for_chunk_progress(
+                            expected_ack_cycle,
+                            int(decoded_packet["chunk_index"]),
+                        )
+                        image_packets_confirmed += 1
+                        runtime.state.update_write_progress(
+                            _write_progress_percent(
+                                image_packets_confirmed, image_packet_total
+                            ),
+                            chunks_written=image_packets_confirmed,
+                            chunks_total=image_packet_total,
+                            attempt=attempt,
+                            active=True,
+                        )
+                        runtime.coordinator.async_set_updated_data(runtime.state)
+                        if capture_trace and current_packet_event is not None:
+                            current_packet_event["ack_received_ms"] = round(
+                                (time.monotonic() - trace_started_monotonic) * 1000, 3
+                            )
+                        if PANDA_ACK_INTER_PACKET_DELAY_MS:
+                            await asyncio.sleep(PANDA_ACK_INTER_PACKET_DELAY_MS / 1000)
+                    elif decoded_packet.get("kind") == "commit":
+                        await _wait_for_final_ack()
+                        runtime.state.update_write_progress(
+                            _write_progress_percent(
+                                image_packets_confirmed,
+                                image_packet_total,
+                                final_ack=True,
+                            ),
+                            chunks_written=image_packets_confirmed,
+                            chunks_total=image_packet_total,
+                            attempt=attempt,
+                            active=False,
+                        )
+                        runtime.coordinator.async_set_updated_data(runtime.state)
+                        if capture_trace and current_packet_event is not None:
+                            current_packet_event["ack_received_ms"] = round(
+                                (time.monotonic() - trace_started_monotonic) * 1000, 3
+                            )
+                    else:
+                        await asyncio.sleep(write_delay_ms / 1000)
+                except HomeAssistantError as err:
+                    if not is_image_chunk or chunk_retry_attempt >= retry_count:
+                        raise
+                    if capture_trace and current_packet_event is not None:
+                        current_packet_event["relative_error_ms"] = round(
+                            (time.monotonic() - trace_started_monotonic) * 1000, 3
+                        )
+                        current_packet_event["relative_end_ms"] = current_packet_event[
+                            "relative_error_ms"
+                        ]
+                        current_packet_event["error"] = str(err)
+                        current_packet_event["will_retry"] = True
+                        current_packet_event["notification_count"] = len(
+                            current_packet_event["notifications"]
+                        )
+                        trace_packet_events.append(current_packet_event)
+                        current_packet_event = None
+                    chunk_retry_attempt += 1
+                    chunk_retry_count += 1
+                    _LOGGER.warning(
+                        "Retrying PANDA ESL chunk %s/%s plane %s to %s after ACK failure: %s",
+                        decoded_packet.get("chunk_index"),
+                        decoded_packet.get("chunk_total"),
+                        decoded_packet.get("plane"),
+                        runtime.state.address,
+                        err,
+                    )
+                    if PANDA_ACK_INTER_PACKET_DELAY_MS:
+                        await asyncio.sleep(PANDA_ACK_INTER_PACKET_DELAY_MS / 1000)
+                    continue
+
                 if capture_trace and current_packet_event is not None:
-                    current_packet_event["ack_received_ms"] = round(
+                    current_packet_event["relative_end_ms"] = round(
                         (time.monotonic() - trace_started_monotonic) * 1000, 3
                     )
-            else:
-                await asyncio.sleep(write_delay_ms / 1000)
-
-            if capture_trace and current_packet_event is not None:
-                current_packet_event["relative_end_ms"] = round(
-                    (time.monotonic() - trace_started_monotonic) * 1000, 3
-                )
-                current_packet_event["notification_count"] = len(
-                    current_packet_event["notifications"]
-                )
-                trace_packet_events.append(current_packet_event)
-                current_packet_event = None
+                    current_packet_event["notification_count"] = len(
+                        current_packet_event["notifications"]
+                    )
+                    trace_packet_events.append(current_packet_event)
+                    current_packet_event = None
+                break
 
         await asyncio.sleep(0.2)
         if notify_started:
@@ -761,9 +808,12 @@ async def _async_send_packets_attempt(
             "preamble": "standard",
             "packet_count": len(packets),
             "image_packets_written": image_packets_written,
-            "bytes_written": sum(len(packet) for packet in packets),
+            "image_packets_confirmed": image_packets_confirmed,
+            "bytes_written": bytes_written,
             "notification_count": len(notifications),
             "notifications": notifications[:40],
+            "retry_count": retry_count,
+            "chunk_retry_count": chunk_retry_count,
             "attempt": attempt,
             "max_attempts": max_attempts,
             "ack_progress_count": ack_progress_count,
@@ -791,7 +841,10 @@ async def _async_send_packets_attempt(
                 "write_delay_ms": write_delay_ms,
                 "packet_count": len(packets),
                 "image_packets_written": image_packets_written,
-                "bytes_written": sum(len(packet) for packet in packets),
+                "image_packets_confirmed": image_packets_confirmed,
+                "bytes_written": bytes_written,
+                "retry_count": retry_count,
+                "chunk_retry_count": chunk_retry_count,
                 "attempt": attempt,
                 "max_attempts": max_attempts,
                 "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
@@ -808,6 +861,8 @@ async def _async_send_packets_attempt(
                     {
                         **trace_summary,
                         "result": result_name,
+                        "retry_count": retry_count,
+                        "chunk_retry_count": chunk_retry_count,
                         "ack_progress_count": ack_progress_count,
                         "ack_cycle_count": ack_cycle_count,
                         "ack_final_seen": final_ack_seen,
@@ -862,6 +917,11 @@ async def _async_send_packets_attempt(
                 "characteristic": PANDA_FFE1_CHAR_UUID,
                 "write_delay_ms": write_delay_ms,
                 "packet_count": len(packets),
+                "image_packets_written": image_packets_written,
+                "image_packets_confirmed": image_packets_confirmed,
+                "bytes_written": bytes_written,
+                "retry_count": retry_count,
+                "chunk_retry_count": chunk_retry_count,
                 "attempt": attempt,
                 "max_attempts": max_attempts,
                 "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
@@ -873,6 +933,10 @@ async def _async_send_packets_attempt(
                 **trace_summary,
                 "attempt": attempt,
                 "max_attempts": max_attempts,
+                "retry_count": retry_count,
+                "chunk_retry_count": chunk_retry_count,
+                "image_packets_written": image_packets_written,
+                "image_packets_confirmed": image_packets_confirmed,
                 "ack_progress_count": ack_progress_count,
                 "ack_cycle_count": ack_cycle_count,
                 "ack_final_seen": final_ack_seen,
@@ -890,6 +954,8 @@ async def _async_send_packets_attempt(
                     {
                         **trace_summary,
                         "result": result_name + "_error",
+                        "retry_count": retry_count,
+                        "chunk_retry_count": chunk_retry_count,
                         "ack_progress_count": ack_progress_count,
                         "ack_cycle_count": ack_cycle_count,
                         "ack_final_seen": final_ack_seen,
@@ -934,10 +1000,11 @@ async def _async_send_packets(
     result_name: str,
     details: dict[str, Any],
     write_delay_ms: int = PANDA_WRITE_DELAY_MS,
-    max_attempts: int = PANDA_ACK_MAX_ATTEMPTS,
+    retry_count: int = DEFAULT_RETRY_COUNT,
 ) -> None:
-    """Send packets with at most one whole-write retry."""
-    bounded_attempts = max(1, min(int(max_attempts), PANDA_ACK_MAX_ATTEMPTS))
+    """Send packets with bounded retries after the first write attempt."""
+    bounded_retry_count = _bounded_retry_count(retry_count)
+    bounded_attempts = bounded_retry_count + 1
     last_error: HomeAssistantError | None = None
     for attempt in range(1, bounded_attempts + 1):
         try:
@@ -950,6 +1017,7 @@ async def _async_send_packets(
                 details=details,
                 write_delay_ms=write_delay_ms,
                 attempt=attempt,
+                retry_count=bounded_retry_count,
                 max_attempts=bounded_attempts,
             )
             return
@@ -976,7 +1044,7 @@ async def async_write_rendered_packets(
     result_name: str,
     details: dict[str, Any],
     write_delay_ms: int = PANDA_WRITE_DELAY_MS,
-    max_attempts: int = PANDA_ACK_MAX_ATTEMPTS,
+    retry_count: int = DEFAULT_RETRY_COUNT,
 ) -> None:
     """Send rendered-image packets through the proven PANDA packet path."""
     await _async_send_packets(
@@ -987,7 +1055,7 @@ async def async_write_rendered_packets(
         result_name=result_name,
         details=details,
         write_delay_ms=write_delay_ms,
-        max_attempts=max_attempts,
+        retry_count=retry_count,
     )
 
 
