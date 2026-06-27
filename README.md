@@ -198,6 +198,8 @@ Optional font files that used to be bundled with the integration are still avail
 font: GmarketSansTTFBold.ttf
 ```
 
+See [Font Previews](docs/font-previews.md) for dry-run examples of each bundled and optional text font on the 256x128 PANDA ESL canvas.
+
 ## Data Updates
 
 PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write, and Home Assistant restores their last retained images after restarts. The integration does not poll a cloud service.
