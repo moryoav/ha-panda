@@ -1,10 +1,4 @@
 sequence:
-  - variables:
-      vacation_date: "2026-07-01"
-  - variables:
-      days_left: >-
-        {% set target = as_datetime(vacation_date) %}{% set days =
-        (target.date() - now().date()).days %}{{ 0 if days < 0 else days }}
   - action: panda_esl.write
     target:
       device_id: 02f83e543608fe720312585eaedf153c
@@ -19,10 +13,10 @@ sequence:
           fill: black
           outline: black
         - type: icon
-          value: airplane-takeoff
+          value: sail-boat
           x: 42
           "y": 64
-          size: 48
+          size: 52
           color: white
           anchor: mm
         - type: line
@@ -33,27 +27,19 @@ sequence:
           width: 1
           fill: black
         - type: text
-          value: "{{ days_left }}"
+          value: 端午節
           x: 171
-          "y": 55
-          size: 58
-          color: black
-          anchor: mm
-          font: fonts/NotoSansKR-Bold.ttf
-        - type: text
-          value: days left
-          x: 171
-          "y": 94
-          size: 17
+          "y": 61
+          size: 42
           color: black
           anchor: mm
           font: fonts/NotoSansKR-Bold.ttf
         - type: line
           x_start: 119
           x_end: 223
-          y_start: 110
-          y_end: 110
-          width: 1
+          y_start: 92
+          y_end: 92
+          width: 2
           fill: black
-alias: PANDA ESL 2.13 - Vacation Countdown
+alias: PANDA ESL 2.13 - Dragon Boat Festival
 description: ""

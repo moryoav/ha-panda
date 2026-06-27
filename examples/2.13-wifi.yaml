@@ -45,7 +45,7 @@ sequence:
           size: 23
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: line
           x_start: 148
           x_end: 240
@@ -60,7 +60,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: "{{ wifi_ssid }}"
           x: 194
@@ -68,7 +68,7 @@ sequence:
           size: 15
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: rectangle
           x_start: 145
           y_start: 105
@@ -83,6 +83,6 @@ sequence:
           size: 10
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
 alias: PANDA ESL 2.13 - Wi-Fi QR
 description: ""

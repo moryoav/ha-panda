@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.12 - 2026-06-27
+
+- Trim the HACS runtime package by keeping only the default Noto Sans KR fonts and Material Design Icons files inside the integration.
+- Move optional decorative font files to `optional_fonts/` so they remain downloadable from GitHub without being installed by HACS.
+- Add support for user fonts under `config/panda_esl/fonts/` while keeping `config/www/fonts/` and absolute-path font references working.
+- Cache loaded TrueType fonts and compact the Material Design Icons metadata used by icon rendering.
+- Configure HACS releases to use the `panda_esl.zip` integration asset and hide the default branch download option.
+
 ## 0.1.11 - 2026-06-16
 
 - Disable in-place chunk retries after traces showed duplicate chunk writes can stall transfers and leave labels unable to start the next write.

@@ -65,7 +65,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 0 }}"
         - type: icon
           value: >-
@@ -95,7 +95,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 0 }}"
         - type: text
           value: >-
@@ -107,7 +107,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFMedium.ttf
+          font: fonts/NotoSansKR-Regular.ttf
           visible: >-
             {{ (forecasts | count) > 0 and forecasts[0].precipitation_probability
             is defined and forecasts[0].precipitation_probability is not none and
@@ -121,7 +121,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 1 }}"
         - type: icon
           value: >-
@@ -151,7 +151,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 1 }}"
         - type: text
           value: >-
@@ -163,7 +163,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFMedium.ttf
+          font: fonts/NotoSansKR-Regular.ttf
           visible: >-
             {{ (forecasts | count) > 1 and forecasts[1].precipitation_probability
             is defined and forecasts[1].precipitation_probability is not none and
@@ -177,7 +177,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 2 }}"
         - type: icon
           value: >-
@@ -207,7 +207,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 2 }}"
         - type: text
           value: >-
@@ -219,7 +219,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFMedium.ttf
+          font: fonts/NotoSansKR-Regular.ttf
           visible: >-
             {{ (forecasts | count) > 2 and forecasts[2].precipitation_probability
             is defined and forecasts[2].precipitation_probability is not none and
@@ -233,7 +233,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 3 }}"
         - type: icon
           value: >-
@@ -263,7 +263,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 3 }}"
         - type: text
           value: >-
@@ -275,7 +275,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFMedium.ttf
+          font: fonts/NotoSansKR-Regular.ttf
           visible: >-
             {{ (forecasts | count) > 3 and forecasts[3].precipitation_probability
             is defined and forecasts[3].precipitation_probability is not none and
@@ -289,7 +289,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 4 }}"
         - type: icon
           value: >-
@@ -319,7 +319,7 @@ sequence:
           size: 9
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ (forecasts | count) > 4 }}"
         - type: text
           value: >-
@@ -331,7 +331,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFMedium.ttf
+          font: fonts/NotoSansKR-Regular.ttf
           visible: >-
             {{ (forecasts | count) > 4 and forecasts[4].precipitation_probability
             is defined and forecasts[4].precipitation_probability is not none and

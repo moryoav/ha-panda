@@ -33,7 +33,7 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 - Bluetooth RSSI diagnostic sensor from the latest Home Assistant Bluetooth advertisement
 - Write-lock switch
 - Packet notification capture switch for BLE transfer diagnostics
-- Bundled fonts and Material Design Icons support
+- Minimal bundled Noto Sans KR fonts, custom font directories, and Material Design Icons support
 
 The PANDA display supports white, black, and red output. The service syntax accepts `yellow` for compatibility with Gicisky payloads, but yellow is mapped to red when writing to PANDA hardware.
 
@@ -172,6 +172,32 @@ The renderer supports the same element names and field names used by `hass-gicis
 
 `text`, `multiline`, `line`, `rectangle`, `rectangle_pattern`, `circle`, `ellipse`, `icon`, `dlimg`, `qrcode`, `barcode`, `datamatrix`, `diagram`, `plot`, `progress_bar`, `arc`, `gauge`, `polygon`, `table`, and `text_box`.
 
+## Fonts
+
+PANDA ESL ships a small runtime font set so HACS installs stay lightweight:
+
+- `fonts/NotoSansKR-Regular.ttf`
+- `fonts/NotoSansKR-Bold.ttf`
+- Material Design Icons webfont files for `icon` payloads
+
+To add more fonts, copy `.ttf` or `.otf` files into `config/panda_esl/fonts/` in your Home Assistant config directory. Fonts stored there are not managed by HACS and will survive integration upgrades.
+
+The renderer resolves font paths in this order:
+
+1. Absolute path.
+2. Bundled integration font under `custom_components/panda_esl/fonts/`.
+3. `config/panda_esl/fonts/`.
+4. `config/www/fonts/`.
+5. Bundled `NotoSansKR-Regular.ttf` fallback.
+
+For compatibility, a payload value such as `fonts/GmarketSansTTFBold.ttf` will also look for `GmarketSansTTFBold.ttf` in the custom font directories. This lets existing payloads keep working after copying the optional font file into `config/panda_esl/fonts/`.
+
+Optional font files that used to be bundled with the integration are still available in [optional_fonts](optional_fonts/). Download the files you need from that folder and place them in `config/panda_esl/fonts/`, then reference them from YAML:
+
+```yaml
+font: GmarketSansTTFBold.ttf
+```
+
 ## Data Updates
 
 PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write, and Home Assistant restores their last retained images after restarts. The integration does not poll a cloud service.
@@ -191,6 +217,7 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 | 2.13" (256x128) | Calendar | ![Calendar example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/calendar.png) | [2.13" Calendar](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-calendar.yaml) |
 | 2.13" (256x128) | Wi-Fi QR | ![Wi-Fi QR example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/wifi.png) | [2.13" Wi-Fi QR](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-wifi.yaml) |
 | 2.13" (256x128) | Vacation countdown | ![Vacation countdown example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/dayleft.png) | [2.13" Vacation countdown](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-vacation-countdown.yaml) |
+| 2.13" (256x128) | Dragon Boat Festival | ![Dragon Boat Festival example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/dragon-boat-festival.png) | [2.13" Dragon Boat Festival](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-dragon-boat-festival.yaml) |
 | 2.13" (256x128) | Weather today | ![Weather today example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather-today.png) | [2.13" Weather today](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-today.yaml) |
 | 2.13" (256x128) | Weather forecast | ![Weather forecast example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather.png) | [2.13" Weather forecast](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-forecast.yaml) |
 
@@ -238,11 +265,12 @@ The HACS repository layout is:
 ```text
 custom_components/panda_esl/
   brand/icon.png
+optional_fonts/
 hacs.json
 README.md
 ```
 
-All files needed at runtime live under `custom_components/panda_esl/`, as required by HACS integration repositories.
+All files needed at runtime live under `custom_components/panda_esl/`, as required by HACS integration repositories. Optional fonts live outside the integration and are published for manual download only. Releases include a `panda_esl.zip` asset so HACS can install the runtime integration without downloading optional font assets. HACS is configured to offer tagged releases rather than the default branch because release assets are required for this lightweight package path.
 
 
 ## Disclaimer

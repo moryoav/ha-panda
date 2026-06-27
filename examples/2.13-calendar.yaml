@@ -22,7 +22,7 @@ sequence:
           size: 12
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: M
           x: "{{ grid_x_start + (cell_width * 1.5) }}"
@@ -30,7 +30,7 @@ sequence:
           size: 12
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: T
           x: "{{ grid_x_start + (cell_width * 2.5) }}"
@@ -38,7 +38,7 @@ sequence:
           size: 12
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: W
           x: "{{ grid_x_start + (cell_width * 3.5) }}"
@@ -46,7 +46,7 @@ sequence:
           size: 12
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: T
           x: "{{ grid_x_start + (cell_width * 4.5) }}"
@@ -54,7 +54,7 @@ sequence:
           size: 12
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: F
           x: "{{ grid_x_start + (cell_width * 5.5) }}"
@@ -62,7 +62,7 @@ sequence:
           size: 12
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: S
           x: "{{ grid_x_start + (cell_width * 6.5) }}"
@@ -70,7 +70,7 @@ sequence:
           size: 12
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: line
           x_start: 8
           x_end: 248
@@ -98,7 +98,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 1 == now().day else ('red' if (((start_weekday_offset
             | int) + 0) % 7) in [5, 6] else 'black') }}
@@ -113,7 +113,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 2 == now().day else ('red' if (((start_weekday_offset
             | int) + 1) % 7) in [5, 6] else 'black') }}
@@ -128,7 +128,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 3 == now().day else ('red' if (((start_weekday_offset
             | int) + 2) % 7) in [5, 6] else 'black') }}
@@ -143,7 +143,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 4 == now().day else ('red' if (((start_weekday_offset
             | int) + 3) % 7) in [5, 6] else 'black') }}
@@ -158,7 +158,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 5 == now().day else ('red' if (((start_weekday_offset
             | int) + 4) % 7) in [5, 6] else 'black') }}
@@ -173,7 +173,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 6 == now().day else ('red' if (((start_weekday_offset
             | int) + 5) % 7) in [5, 6] else 'black') }}
@@ -188,7 +188,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 7 == now().day else ('red' if (((start_weekday_offset
             | int) + 6) % 7) in [5, 6] else 'black') }}
@@ -203,7 +203,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 8 == now().day else ('red' if (((start_weekday_offset
             | int) + 7) % 7) in [5, 6] else 'black') }}
@@ -218,7 +218,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 9 == now().day else ('red' if (((start_weekday_offset
             | int) + 8) % 7) in [5, 6] else 'black') }}
@@ -233,7 +233,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 10 == now().day else ('red' if (((start_weekday_offset
             | int) + 9) % 7) in [5, 6] else 'black') }}
@@ -248,7 +248,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 11 == now().day else ('red' if (((start_weekday_offset
             | int) + 10) % 7) in [5, 6] else 'black') }}
@@ -263,7 +263,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 12 == now().day else ('red' if (((start_weekday_offset
             | int) + 11) % 7) in [5, 6] else 'black') }}
@@ -278,7 +278,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 13 == now().day else ('red' if (((start_weekday_offset
             | int) + 12) % 7) in [5, 6] else 'black') }}
@@ -293,7 +293,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 14 == now().day else ('red' if (((start_weekday_offset
             | int) + 13) % 7) in [5, 6] else 'black') }}
@@ -308,7 +308,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 15 == now().day else ('red' if (((start_weekday_offset
             | int) + 14) % 7) in [5, 6] else 'black') }}
@@ -323,7 +323,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 16 == now().day else ('red' if (((start_weekday_offset
             | int) + 15) % 7) in [5, 6] else 'black') }}
@@ -338,7 +338,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 17 == now().day else ('red' if (((start_weekday_offset
             | int) + 16) % 7) in [5, 6] else 'black') }}
@@ -353,7 +353,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 18 == now().day else ('red' if (((start_weekday_offset
             | int) + 17) % 7) in [5, 6] else 'black') }}
@@ -368,7 +368,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 19 == now().day else ('red' if (((start_weekday_offset
             | int) + 18) % 7) in [5, 6] else 'black') }}
@@ -383,7 +383,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 20 == now().day else ('red' if (((start_weekday_offset
             | int) + 19) % 7) in [5, 6] else 'black') }}
@@ -398,7 +398,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 21 == now().day else ('red' if (((start_weekday_offset
             | int) + 20) % 7) in [5, 6] else 'black') }}
@@ -413,7 +413,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 22 == now().day else ('red' if (((start_weekday_offset
             | int) + 21) % 7) in [5, 6] else 'black') }}
@@ -428,7 +428,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 23 == now().day else ('red' if (((start_weekday_offset
             | int) + 22) % 7) in [5, 6] else 'black') }}
@@ -443,7 +443,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 24 == now().day else ('red' if (((start_weekday_offset
             | int) + 23) % 7) in [5, 6] else 'black') }}
@@ -458,7 +458,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 25 == now().day else ('red' if (((start_weekday_offset
             | int) + 24) % 7) in [5, 6] else 'black') }}
@@ -473,7 +473,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 26 == now().day else ('red' if (((start_weekday_offset
             | int) + 25) % 7) in [5, 6] else 'black') }}
@@ -488,7 +488,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 27 == now().day else ('red' if (((start_weekday_offset
             | int) + 26) % 7) in [5, 6] else 'black') }}
@@ -503,7 +503,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 28 == now().day else ('red' if (((start_weekday_offset
             | int) + 27) % 7) in [5, 6] else 'black') }}
@@ -518,7 +518,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 29 == now().day else ('red' if (((start_weekday_offset
             | int) + 28) % 7) in [5, 6] else 'black') }}
@@ -533,7 +533,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 30 == now().day else ('red' if (((start_weekday_offset
             | int) + 29) % 7) in [5, 6] else 'black') }}
@@ -548,7 +548,7 @@ sequence:
             cell_height) + (cell_height / 2) }}
           size: 11
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           color: >-
             {{ 'white' if 31 == now().day else ('red' if (((start_weekday_offset
             | int) + 30) % 7) in [5, 6] else 'black') }}

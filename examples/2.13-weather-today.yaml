@@ -35,7 +35,7 @@ sequence:
           size: 9
           color: white
           anchor: mm
-          font: fonts/GmarketSansTTFMedium.ttf
+          font: fonts/NotoSansKR-Regular.ttf
         - type: icon
           value: >-
             {% set condition = states(weather_entity) %}{% if condition in
@@ -63,7 +63,7 @@ sequence:
           size: 10
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: >-
             {% set temperature = state_attr(weather_entity, 'temperature') %}{{
@@ -73,7 +73,7 @@ sequence:
           size: 47
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: "{{ state_attr(weather_entity, 'temperature_unit') | default('', true) }}"
           x: 205
@@ -81,7 +81,7 @@ sequence:
           size: 13
           color: black
           anchor: lm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
         - type: text
           value: >-
             {% if (forecasts | count) > 0 and forecasts[0].temperature is
@@ -95,7 +95,7 @@ sequence:
           size: 11
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: >-
             {{ (forecasts | count) > 0 and forecasts[0].temperature is defined
             and forecasts[0].temperature is not none }}
@@ -127,7 +127,7 @@ sequence:
           size: 8
           color: red
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: >-
             {{ (forecasts | count) > 0 and
             forecasts[0].precipitation_probability is defined and
@@ -147,7 +147,7 @@ sequence:
             is defined and forecasts[0].precipitation_probability is not none
             else 0 %}{{ 'red' if (rain_chance | float(0)) > 0 else 'black' }}
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: >-
             {{ (forecasts | count) > 0 and
             forecasts[0].precipitation_probability is defined and
@@ -159,7 +159,7 @@ sequence:
           size: 8
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ state_attr(weather_entity, 'humidity') is not none }}"
         - type: text
           value: >-
@@ -170,7 +170,7 @@ sequence:
           size: 12
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ state_attr(weather_entity, 'humidity') is not none }}"
         - type: text
           value: WIND
@@ -179,7 +179,7 @@ sequence:
           size: 8
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ state_attr(weather_entity, 'wind_speed') is not none }}"
         - type: text
           value: >-
@@ -192,7 +192,7 @@ sequence:
           size: 10
           color: black
           anchor: mm
-          font: fonts/GmarketSansTTFBold.ttf
+          font: fonts/NotoSansKR-Bold.ttf
           visible: "{{ state_attr(weather_entity, 'wind_speed') is not none }}"
 alias: PANDA ESL 2.13 - Weather Today
 description: ""

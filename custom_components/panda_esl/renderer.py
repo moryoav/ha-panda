@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime, timedelta
+from functools import lru_cache
 from io import BytesIO
 import io
 import json
@@ -36,7 +37,7 @@ YELLOW = (255, 255, 0, 255)
 _SUPPORTED_COLORS = [WHITE, BLACK, RED, YELLOW]
 _FONT_DIR = Path(__file__).with_name("fonts")
 _DEFAULT_FONT = "fonts/NotoSansKR-Regular.ttf"
-_MDI_META: list[dict[str, Any]] | None = None
+_MDI_MAP: dict[str, str] | None = None
 
 
 def blank_png(width: int, height: int) -> bytes:
@@ -170,6 +171,17 @@ def _get_wrapped_text(text: str, font: ImageFont.ImageFont, line_length: int) ->
     return "\n".join(lines)
 
 
+def _font_lookup_names(font_name: str) -> list[str]:
+    normalized = font_name.replace("\\", "/")
+    names = [normalized]
+    if normalized.startswith("fonts/"):
+        names.append(normalized.removeprefix("fonts/"))
+    basename = Path(normalized).name
+    if basename not in names:
+        names.append(basename)
+    return names
+
+
 def _get_font_file(font_name: str, hass: HomeAssistant) -> str:
     if os.path.isabs(font_name) and os.path.exists(font_name):
         return font_name
@@ -178,10 +190,14 @@ def _get_font_file(font_name: str, hass: HomeAssistant) -> str:
     if font_file.exists():
         return str(font_file)
 
-    www_fonts = Path(hass.config.path("www/fonts"))
-    custom_font = www_fonts / font_name
-    if custom_font.exists():
-        return str(custom_font)
+    for font_dir in (
+        Path(hass.config.path("panda_esl/fonts")),
+        Path(hass.config.path("www/fonts")),
+    ):
+        for lookup_name in _font_lookup_names(font_name):
+            custom_font = font_dir / lookup_name
+            if custom_font.exists():
+                return str(custom_font)
 
     fallback = _FONT_DIR / "NotoSansKR-Regular.ttf"
     if fallback.exists():
@@ -190,9 +206,14 @@ def _get_font_file(font_name: str, hass: HomeAssistant) -> str:
     return font_name
 
 
+@lru_cache(maxsize=128)
+def _load_truetype_font(font_file: str, size: int) -> ImageFont.ImageFont:
+    return ImageFont.truetype(font_file, size)
+
+
 def _load_font(font_name: str, size: int, hass: HomeAssistant) -> ImageFont.ImageFont:
     try:
-        return ImageFont.truetype(_get_font_file(font_name, hass), size)
+        return _load_truetype_font(_get_font_file(font_name, hass), size)
     except OSError:
         _LOGGER.warning("Falling back to default PIL font; missing font: %s", font_name)
         return ImageFont.load_default()
@@ -309,13 +330,26 @@ def _resize_image(image: Image.Image, x_size: int, y_size: int, mode: str) -> Im
     return image.resize((x_size, y_size), Image.LANCZOS)
 
 
-def _load_mdi_icon_data() -> list[dict[str, Any]]:
-    global _MDI_META
-    if _MDI_META is None:
+def _load_mdi_icon_map() -> dict[str, str]:
+    global _MDI_MAP
+    if _MDI_MAP is None:
         meta_file = _FONT_DIR / "materialdesignicons-webfont_meta.json"
         with meta_file.open(encoding="utf-8") as file:
-            _MDI_META = json.load(file)
-    return _MDI_META
+            data = json.load(file)
+        if isinstance(data, dict):
+            _MDI_MAP = {str(name): str(codepoint) for name, codepoint in data.items()}
+        else:
+            icon_map: dict[str, str] = {}
+            for icon in data:
+                codepoint = icon.get("codepoint")
+                if not codepoint:
+                    continue
+                if name := icon.get("name"):
+                    icon_map[str(name)] = str(codepoint)
+                for alias in icon.get("aliases", []):
+                    icon_map[str(alias)] = str(codepoint)
+            _MDI_MAP = icon_map
+    return _MDI_MAP
 
 
 def _map_weather_icon(icon: str) -> str:
@@ -895,11 +929,7 @@ def render_service_image(
             if icon_value.startswith("mdi:"):
                 icon_value = icon_value[4:]
             icon_value = _map_weather_icon(icon_value)
-            codepoint = ""
-            for icon in _load_mdi_icon_data():
-                if icon.get("name") == icon_value or icon_value in icon.get("aliases", []):
-                    codepoint = icon["codepoint"]
-                    break
+            codepoint = _load_mdi_icon_map().get(icon_value, "")
             if not codepoint:
                 raise _render_error(
                     "invalid_icon",

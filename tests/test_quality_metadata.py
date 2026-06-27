@@ -32,9 +32,41 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.11"
+    assert manifest["version"] == "0.1.12"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
+
+
+def test_hacs_uses_zip_release_asset() -> None:
+    """HACS should install the small release artifact, not optional repo assets."""
+    hacs = _json(ROOT / "hacs.json")
+
+    assert hacs["zip_release"] is True
+    assert hacs["filename"] == "panda_esl.zip"
+    assert hacs["hide_default_branch"] is True
+
+
+def test_font_package_keeps_only_runtime_fonts() -> None:
+    """Optional fonts should stay outside the HACS-installed integration."""
+    integration_fonts = {
+        path.name for path in (INTEGRATION / "fonts").iterdir() if path.is_file()
+    }
+    optional_fonts = {
+        path.name for path in (ROOT / "optional_fonts").iterdir() if path.is_file()
+    }
+
+    assert integration_fonts == {
+        "NotoSansKR-Regular.ttf",
+        "NotoSansKR-Bold.ttf",
+        "materialdesignicons-webfont.ttf",
+        "materialdesignicons-webfont_meta.json",
+    }
+    assert {
+        "GmarketSansTTFBold.ttf",
+        "GmarketSansTTFMedium.ttf",
+        "CookieRunRegular.ttf",
+        "OwnglyphParkDaHyun.ttf",
+    }.issubset(optional_fonts)
 
 
 def test_quality_scale_file_tracks_gold_rules() -> None:
@@ -134,8 +166,9 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.11 - 2026-06-16" in changelog
-    assert "restore" in changelog.lower()
+    assert "## 0.1.12 - 2026-06-27" in changelog
+    assert "optional_fonts" in changelog
+    assert "panda_esl.zip" in changelog
     assert "Bluetooth RSSI" in readme
     assert "Write progress" in readme
     assert "Write retries" in readme
@@ -143,3 +176,5 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     assert "Reconfigure" in readme
     assert "Supported Devices" in readme
     assert "Known Limitations" in readme
+    assert "config/panda_esl/fonts/" in readme
+    assert "optional_fonts" in readme
