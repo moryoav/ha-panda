@@ -1,12 +1,12 @@
 # PANDA ESL for Home Assistant
 
-[![HACS Custom][hacs-badge]][hacs-url]
+[![HACS Default][hacs-badge]][hacs-url]
 [![Home Assistant][ha-badge]][ha-url]
 [![Release][release-badge]][release-url]
 [![Local Push][iot-badge]][iot-url]
 [![License: MIT][license-badge]][license-url]
 
-[hacs-badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square
+[hacs-badge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square
 [hacs-url]: https://www.hacs.xyz/
 [ha-badge]: https://img.shields.io/badge/Home%20Assistant-2024.6%2B-18BCF2.svg?style=flat-square
 [ha-url]: https://www.home-assistant.io/
@@ -61,11 +61,12 @@ Unsupported or unverified devices:
 
 [![Open the PANDA ESL HACS repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=moryoav&repository=ha-panda&category=integration)
 
-1. Open HACS in Home Assistant.
-2. Add `https://github.com/moryoav/ha-panda` as an integration custom repository.
-3. Search for **PANDA ESL** and install it.
-4. Restart Home Assistant.
-5. Add the integration from **Settings** -> **Devices & services** -> **Add integration** -> **PANDA ESL**.
+PANDA ESL is available in the default HACS catalog, so no custom repository setup is required.
+
+1. Select the button above, or open HACS and search for **PANDA ESL** under **Integrations**.
+2. Select **PANDA ESL** and choose **Download**.
+3. Restart Home Assistant.
+4. Add the integration from **Settings** -> **Devices & services** -> **Add integration** -> **PANDA ESL**.
 
 ### Manual
 
