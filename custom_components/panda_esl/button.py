@@ -13,7 +13,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANUFACTURER, MODEL
+from .const import DOMAIN, MANUFACTURER
 from .runtime import (
     PandaEslRuntimeData,
     async_write_black_fill,
@@ -116,6 +116,6 @@ class PandaEslWriteButton(CoordinatorEntity, ButtonEntity):
             connections={(CONNECTION_BLUETOOTH, self._runtime.state.address)},
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
+            model=self._runtime.profile.model,
             name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )

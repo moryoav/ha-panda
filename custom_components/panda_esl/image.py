@@ -19,7 +19,7 @@ from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, MANUFACTURER, MODEL
+from .const import DOMAIN, MANUFACTURER
 from .runtime import PandaEslRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ class PandaEslImageEntity(
             connections={(CONNECTION_BLUETOOTH, self._runtime.state.address)},
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
+            model=self._runtime.profile.model,
             name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )
 

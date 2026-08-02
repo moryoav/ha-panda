@@ -6,7 +6,11 @@
   ],
   "bluetooth": [
     {
-      "local_name": "ETAG-*",
+      "local_name": "ETAG-525*",
+      "connectable": false
+    },
+    {
+      "local_name": "ETAG-526*",
       "connectable": false
     },
     {
@@ -15,10 +19,6 @@
     },
     {
       "service_uuid": "33323032-4c53-4545-4c42-4b4e494c4f57",
-      "connectable": false
-    },
-    {
-      "manufacturer_id": 34632,
       "connectable": false
     }
   ],
@@ -39,5 +39,5 @@
     "python-barcode==0.15.1",
     "pyStrich==0.9"
   ],
-  "version": "0.1.13"
+  "version": "0.1.14"
 }

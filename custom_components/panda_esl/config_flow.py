@@ -37,6 +37,7 @@ from .const import (
     MAX_RETRY_COUNT,
 )
 from .models import service_info_supported, title_from_service_info
+from .profiles import device_profile_from_names
 
 OPTIONS_SCHEMA = {
     vol.Required(CONF_RETRY_COUNT, default=DEFAULT_RETRY_COUNT): NumberSelector(
@@ -170,19 +171,25 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
         service_info = bluetooth.async_last_service_info(
             self.hass, address, connectable=False
         )
-        if service_info is not None and service_info_supported(service_info):
+        if service_info is not None:
+            if not service_info_supported(service_info):
+                return self.async_abort(reason="not_supported")
             self._discovery_info = service_info
             self._title = title_from_service_info(service_info)
             self.context["title_placeholders"] = {"name": self._title}
             return self._async_create_entry()
 
-        title = import_config.get(CONF_NAME) or f"PANDA ESL {address[-8:]}"
+        imported_name = import_config.get(CONF_NAME)
+        if device_profile_from_names(imported_name) is None:
+            return self.async_abort(reason="not_supported")
+
+        title = str(imported_name)
         return self.async_create_entry(
             title=title,
             data={
                 CONF_ADDRESS: address,
                 CONF_NAME: title,
-                CONF_DISCOVERED_NAME: import_config.get(CONF_NAME),
+                CONF_DISCOVERED_NAME: title,
                 CONF_SERVICE_UUIDS: [],
             },
         )
@@ -204,8 +211,8 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
                 self.hass, address, connectable=False
             )
             if service_info is not None and service_info_supported(service_info):
-                data_updates[CONF_DISCOVERED_NAME] = (
-                    service_info.name or getattr(service_info, "local_name", None)
+                data_updates[CONF_DISCOVERED_NAME] = title_from_service_info(
+                    service_info
                 )
                 data_updates[CONF_SERVICE_UUIDS] = sorted(
                     uuid.lower() for uuid in service_info.service_uuids
@@ -243,8 +250,9 @@ class PandaEslConfigFlow(ConfigFlow, domain=DOMAIN):
             data={
                 CONF_ADDRESS: self._discovery_info.address,
                 CONF_NAME: title,
-                CONF_DISCOVERED_NAME: self._discovery_info.name
-                or getattr(self._discovery_info, "local_name", None),
+                CONF_DISCOVERED_NAME: title_from_service_info(
+                    self._discovery_info
+                ),
                 CONF_SERVICE_UUIDS: sorted(
                     uuid.lower() for uuid in self._discovery_info.service_uuids
                 ),

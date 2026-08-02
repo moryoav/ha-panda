@@ -39,21 +39,25 @@ The PANDA display supports white, black, and red output. The service syntax acce
 
 ## Supported Devices
 
-Known supported devices:
+Supported advertised PANDA / ETAG device families:
 
-- PANDA / ETAG 2.13 inch BLE electronic shelf labels that advertise as `ETAG-*`
-- Confirmed working product: [PANDA / ETAG BLE electronic shelf label](https://s.click.aliexpress.com/e/_c4Kgtn93)
+| Advertised tag ID | Size | Resolution |
+| --- | --- | --- |
+| `ETAG-525...` | 2.13 inch | 256x128 |
+| `ETAG-526...` | 2.66 inch | 296x152 |
+
+Confirmed working product: [PANDA / ETAG BLE electronic shelf label](https://s.click.aliexpress.com/e/_c4Kgtn93)
 
 ![PANDA / ETAG BLE electronic shelf label](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/device.jpg)
 
-- Labels advertising PANDA service UUID `18424398-7cbc-11e9-8f9e-2a86e4005a59`
-- ETAG 525-style labels advertising service UUID `33323032-4c53-4545-4c42-4b4e494c4f57`
+Supported IDs use the PANDA `AC ... CA` image protocol and advertise either PANDA service UUID `18424398-7cbc-11e9-8f9e-2a86e4005a59` or ETAG service UUID `33323032-4c53-4545-4c42-4b4e494c4f57`.
 
 Unsupported or unverified devices:
 
 - Wi-Fi or cloud-managed ESL labels
 - BLE labels that do not use the PANDA `AC ... CA` image packet protocol
-- Displays with a resolution other than 256x128
+- ETAG device families other than `ETAG-525...` and `ETAG-526...`
+- Displays with a resolution other than 256x128 or 296x152
 
 ## Installation
 
@@ -236,7 +240,7 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
 - PANDA image chunks are ACK-gated using device progress notifications. A timed-out chunk aborts the current connection and uses the configured full write retry.
 - The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
-- The supported canvas size is 256x128 pixels.
+- The canvas is selected from the advertised tag ID: 256x128 for ETAG-525 and 296x152 for ETAG-526.
 - Yellow payload colors are rendered as red on PANDA hardware.
 - A label must be visible to Home Assistant Bluetooth before a physical write can start.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.

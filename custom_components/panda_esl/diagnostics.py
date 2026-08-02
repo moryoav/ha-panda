@@ -45,6 +45,11 @@ async def async_get_config_entry_diagnostics(
             if key not in {"last_image_data", "write_debouncer"}
         }
 
+    runtime_diagnostics: dict[str, Any] = {}
+    if runtime is not None:
+        runtime_diagnostics = _serialize(runtime.state)
+        runtime_diagnostics["device_profile"] = _serialize(runtime.profile)
+
     return {
         "entry": {
             "title": entry.title,
@@ -54,7 +59,7 @@ async def async_get_config_entry_diagnostics(
             "minor_version": entry.minor_version,
         },
         "runtime": async_redact_data(
-            _serialize(runtime.state) if runtime is not None else {},
+            runtime_diagnostics,
             TO_REDACT,
         ),
         "store": async_redact_data(_serialize(store), TO_REDACT),

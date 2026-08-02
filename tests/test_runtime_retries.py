@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+from io import BytesIO
 from pathlib import Path
 import sys
 import types
@@ -11,6 +12,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from PIL import Image
 
 from homeassistant.exceptions import HomeAssistantError
 
@@ -65,7 +67,11 @@ def _load_submodule(name: str) -> Any:
 
 
 panda_runtime = _load_submodule("runtime")
-PandaEslState = _load_submodule("models").PandaEslState
+panda_models = _load_submodule("models")
+panda_profiles = _load_submodule("profiles")
+PandaEslState = panda_models.PandaEslState
+ETAG_525_PROFILE = panda_profiles.ETAG_525_PROFILE
+ETAG_526_PROFILE = panda_profiles.ETAG_526_PROFILE
 
 
 ADDRESS = "48:87:2D:C4:90:EA"
@@ -182,13 +188,16 @@ def retry_test_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _runtime_data() -> tuple[panda_runtime.PandaEslRuntimeData, FakeCoordinator]:
+def _runtime_data(
+    profile: Any = ETAG_525_PROFILE,
+) -> tuple[panda_runtime.PandaEslRuntimeData, FakeCoordinator]:
     coordinator = FakeCoordinator()
     runtime = panda_runtime.PandaEslRuntimeData(
         state=PandaEslState(address=ADDRESS),
         coordinator=coordinator,
         image_coordinator=FakeCoordinator(),
         preview_coordinator=FakeCoordinator(),
+        profile=profile,
     )
     return runtime, coordinator
 
@@ -198,6 +207,35 @@ def _packets() -> list[bytes]:
         *panda_runtime._STANDARD_PREAMBLE,
         *panda_runtime._frame_image_chunks(0, b"x" * 60),
         bytes.fromhex("ac03ca"),
+    ]
+
+
+def _service_info(
+    name: str,
+    *,
+    address: str = ADDRESS,
+    local_name: str | None = None,
+) -> SimpleNamespace:
+    """Return a minimal Bluetooth advertisement for profile tests."""
+    return SimpleNamespace(
+        address=address,
+        name=name,
+        local_name=local_name,
+        rssi=-50,
+        source="test",
+        service_uuids=[panda_runtime.PANDA_FFE1_CHAR_UUID],
+        manufacturer_data={},
+    )
+
+
+def _image_chunks(packets: list[bytes], plane: int) -> list[bytes]:
+    """Return image packets for one color plane."""
+    return [
+        packet
+        for packet in packets
+        if (decoded := panda_runtime._decode_packet(packet)).get("kind")
+        == "image_chunk"
+        and decoded.get("plane") == plane
     ]
 
 
@@ -226,6 +264,151 @@ def _install_clients(
         panda_runtime, "establish_connection", fake_establish_connection
     )
     return used_clients
+
+
+@pytest.mark.parametrize(
+    ("tag_id", "expected_profile"),
+    [
+        ("ETAG-52500033D0", ETAG_525_PROFILE),
+        ("etag-52600013a5", ETAG_526_PROFILE),
+    ],
+)
+def test_device_profile_is_encoded_in_tag_id(
+    tag_id: str,
+    expected_profile: Any,
+) -> None:
+    """Supported display geometry should be selected from the advertised ID."""
+    assert panda_profiles.device_profile_from_tag_id(tag_id) == expected_profile
+
+
+@pytest.mark.parametrize(
+    "tag_id",
+    [
+        "ETAG-52400033D0",
+        "ETAG-52700033D0",
+        "ETAG-53000033D0",
+        "ETAG-525",
+        "ETAG-52600013A5-extra",
+        "HOLY-IOT",
+        "",
+    ],
+)
+def test_unsupported_tag_ids_have_no_profile(tag_id: str) -> None:
+    """Unknown device families must not inherit the 2.13-inch geometry."""
+    assert panda_profiles.device_profile_from_tag_id(tag_id) is None
+
+
+def test_supported_device_filter_uses_name_and_local_name() -> None:
+    """Discovery should accept only recognized IDs from either name field."""
+    assert panda_models.service_info_supported(_service_info("ETAG-52500033D0"))
+    assert panda_models.service_info_supported(
+        _service_info("Generic BLE", local_name="ETAG-52600013A5")
+    )
+    assert not panda_models.service_info_supported(_service_info("ETAG-52700033D0"))
+
+
+def test_target_match_does_not_cross_update_supported_tags() -> None:
+    """A callback for one configured tag must ignore another supported tag."""
+    other = _service_info(
+        "ETAG-52600013A5",
+        address="48:87:2D:C5:AA:7B",
+    )
+
+    assert not panda_models.service_info_matches_target(other, ADDRESS)
+    assert panda_models.service_info_matches_target(other, other.address)
+
+
+@pytest.mark.parametrize(
+    ("profile", "plane_bytes", "chunks_per_plane", "packet_count", "tail_bytes"),
+    [
+        (ETAG_525_PROFILE, 4096, 82, 168, 46),
+        (ETAG_526_PROFILE, 5624, 113, 230, 24),
+    ],
+)
+def test_white_fill_packet_geometry(
+    profile: Any,
+    plane_bytes: int,
+    chunks_per_plane: int,
+    packet_count: int,
+    tail_bytes: int,
+) -> None:
+    """Each supported profile should send complete white color planes."""
+    packets = panda_runtime._build_fill_packets("white", profile)
+
+    assert profile.plane_byte_count == plane_bytes
+    assert len(packets) == packet_count
+    for plane, expected_byte in ((0, b"\xff"), (1, b"\x00")):
+        chunks = _image_chunks(packets, plane)
+        decoded = [panda_runtime._decode_packet(packet) for packet in chunks]
+        payload = b"".join(packet[9:-1] for packet in chunks)
+
+        assert len(chunks) == chunks_per_plane
+        assert [item["chunk_index"] for item in decoded] == list(
+            range(chunks_per_plane)
+        )
+        assert {item["chunk_total"] for item in decoded} == {chunks_per_plane}
+        assert decoded[-1]["actual_payload_len"] == tail_bytes
+        assert payload == expected_byte * plane_bytes
+
+
+def test_rendered_image_uses_etag_526_canvas_and_planes() -> None:
+    """Rendered writes should preserve the full 296x152 ETAG-526 canvas."""
+    source = Image.new(
+        "RGB",
+        (ETAG_526_PROFILE.width, ETAG_526_PROFILE.height),
+        "white",
+    )
+
+    packets, preview_png, details = panda_runtime.build_packets_from_rendered_image(
+        source,
+        profile=ETAG_526_PROFILE,
+    )
+
+    with Image.open(BytesIO(preview_png)) as preview:
+        assert preview.size == (296, 152)
+    assert len(_image_chunks(packets, 0)) == 113
+    assert len(_image_chunks(packets, 1)) == 113
+    assert details["device_profile"] == "etag_526"
+    assert details["canvas_width"] == 296
+    assert details["canvas_height"] == 152
+    assert details["plane_byte_count"] == 5624
+    assert details["pixel_counts"] == {
+        "white": 296 * 152,
+        "black": 0,
+        "red": 0,
+    }
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+async def test_etag_526_full_write_completes_two_ack_cycles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The larger profile should confirm all 226 chunks and the final commit."""
+    client = FakeBleClient()
+    _install_clients(monkeypatch, [client])
+    runtime, _coordinator = _runtime_data(ETAG_526_PROFILE)
+
+    await panda_runtime._async_send_packets(
+        FakeHass(),
+        runtime,
+        packets=panda_runtime._build_fill_packets("white", ETAG_526_PROFILE),
+        action_key="white_fill",
+        result_name="write_white_fill_ok",
+        details={},
+        write_delay_ms=0,
+        retry_count=0,
+    )
+
+    attrs = runtime.state.write_action_results["white_fill"]
+    assert len(client.writes) == 230
+    assert attrs["device_profile"] == "etag_526"
+    assert attrs["image_packets_written"] == 226
+    assert attrs["image_packets_confirmed"] == 226
+    assert attrs["ack_progress_count"] == 226
+    assert attrs["ack_cycle_count"] == 2
+    assert attrs["ack_final_seen"] is True
+    assert runtime.state.write_progress_chunks_total == 226
+    assert runtime.state.write_progress_percent == 100.0
 
 
 @pytest.mark.usefixtures("retry_test_setup")

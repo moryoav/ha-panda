@@ -32,9 +32,15 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.13"
+    assert manifest["version"] == "0.1.14"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
+    assert {
+        matcher["local_name"]
+        for matcher in manifest["bluetooth"]
+        if "local_name" in matcher
+    } == {"ETAG-525*", "ETAG-526*"}
+    assert all("manufacturer_id" not in matcher for matcher in manifest["bluetooth"])
 
 
 def test_hacs_uses_zip_release_asset() -> None:
@@ -166,7 +172,8 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.13 - 2026-08-02" in changelog
+    assert "## 0.1.14 - 2026-08-02" in changelog
+    assert "@ruffoa" in changelog
     assert "optional_fonts" in changelog
     assert "panda_esl.zip" in changelog
     assert "Bluetooth RSSI" in readme
@@ -175,6 +182,9 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     assert "Download diagnostics" in readme
     assert "Reconfigure" in readme
     assert "Supported Devices" in readme
+    assert "ETAG-525" in readme
+    assert "ETAG-526" in readme
+    assert "296x152" in readme
     assert "Known Limitations" in readme
     assert "config/panda_esl/fonts/" in readme
     assert "optional_fonts" in readme

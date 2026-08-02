@@ -14,7 +14,6 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     DOMAIN,
     MANUFACTURER,
-    MODEL,
     PACKET_NOTIFICATION_CAPTURE,
     WRITE_LOCK,
 )
@@ -61,7 +60,7 @@ class PandaEslWriteLockSwitch(RestoreEntity, SwitchEntity):
             connections={(CONNECTION_BLUETOOTH, self._runtime.state.address)},
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
+            model=self._runtime.profile.model,
             name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )
 
@@ -131,7 +130,7 @@ class PandaEslPacketNotificationCaptureSwitch(RestoreEntity, SwitchEntity):
             connections={(CONNECTION_BLUETOOTH, self._runtime.state.address)},
             identifiers={(DOMAIN, self._runtime.state.address)},
             manufacturer=MANUFACTURER,
-            model=MODEL,
+            model=self._runtime.profile.model,
             name=self._entry.data.get(CONF_NAME) or self._entry.title,
         )
 

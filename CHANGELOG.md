@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.14 - 2026-08-02
+
+- Add official support for 2.66-inch 296x152 `ETAG-526` labels. Thanks to @ruffoa for identifying and verifying this display profile.
+- Select the correct display geometry from the advertised tag ID and restrict discovery to the supported `ETAG-525` and `ETAG-526` families.
+
 ## 0.1.13 - 2026-08-02
 
 - Add a font preview gallery for the bundled and optional text fonts.

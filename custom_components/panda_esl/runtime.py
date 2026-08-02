@@ -24,17 +24,18 @@ from PIL import Image
 
 from .const import DEFAULT_RETRY_COUNT, DOMAIN, MAX_RETRY_COUNT, TRACE_DIRECTORY
 from .models import PandaEslState
+from .profiles import DEFAULT_DEVICE_PROFILE, PandaEslDeviceProfile
 
 _LOGGER = logging.getLogger(__name__)
 
 PANDA_FFE1_CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 
-# Empirically verified for the PANDA ESL-21R / ETAG stock firmware.
-PANDA_PLANE_BYTE_COUNT = 4096  # 256 x 128 / 8
+# Backward-compatible aliases for the original ETAG-525 profile.
+PANDA_PLANE_BYTE_COUNT = DEFAULT_DEVICE_PROFILE.plane_byte_count
 PANDA_CHUNK_PAYLOAD_SIZE = 50
 PANDA_WRITE_DELAY_MS = 150
-PANDA_CANVAS_WIDTH = 256
-PANDA_CANVAS_HEIGHT = 128
+PANDA_CANVAS_WIDTH = DEFAULT_DEVICE_PROFILE.width
+PANDA_CANVAS_HEIGHT = DEFAULT_DEVICE_PROFILE.height
 PANDA_ACK_CHUNK_TIMEOUT_S = 5.0
 PANDA_ACK_FINAL_TIMEOUT_S = 10.0
 PANDA_ACK_INTER_PACKET_DELAY_MS = 10
@@ -55,6 +56,7 @@ class PandaEslRuntimeData:
     coordinator: DataUpdateCoordinator[PandaEslState]
     image_coordinator: DataUpdateCoordinator[bytes]
     preview_coordinator: DataUpdateCoordinator[bytes]
+    profile: PandaEslDeviceProfile
     packet_notification_capture: bool = False
     availability_logged: bool = False
 
@@ -228,7 +230,22 @@ def _frame_image_chunks(plane: int, payload: bytes) -> list[bytes]:
     return packets
 
 
-def _build_fill_packets(color: str) -> list[bytes]:
+def _profile_details(profile: PandaEslDeviceProfile) -> dict[str, Any]:
+    """Return common display-profile details for diagnostics."""
+    return {
+        "device_profile": profile.key,
+        "device_family": profile.family,
+        "screen_size_inches": profile.screen_size_inches,
+        "canvas_width": profile.width,
+        "canvas_height": profile.height,
+        "plane_byte_count": profile.plane_byte_count,
+    }
+
+
+def _build_fill_packets(
+    color: str,
+    profile: PandaEslDeviceProfile,
+) -> list[bytes]:
     """Build reliable full-screen fill packets.
 
     Discovered color model:
@@ -238,12 +255,12 @@ def _build_fill_packets(color: str) -> list[bytes]:
     """
     packets: list[bytes] = list(_STANDARD_PREAMBLE)
     if color == "white":
-        packets += _frame_image_chunks(0, bytes([0xFF]) * PANDA_PLANE_BYTE_COUNT)
-        packets += _frame_image_chunks(1, bytes([0x00]) * PANDA_PLANE_BYTE_COUNT)
+        packets += _frame_image_chunks(0, bytes([0xFF]) * profile.plane_byte_count)
+        packets += _frame_image_chunks(1, bytes([0x00]) * profile.plane_byte_count)
     elif color == "black":
-        packets += _frame_image_chunks(0, bytes([0x00]) * PANDA_PLANE_BYTE_COUNT)
+        packets += _frame_image_chunks(0, bytes([0x00]) * profile.plane_byte_count)
     elif color == "red":
-        packets += _frame_image_chunks(1, bytes([0xFF]) * PANDA_PLANE_BYTE_COUNT)
+        packets += _frame_image_chunks(1, bytes([0xFF]) * profile.plane_byte_count)
     else:
         raise ValueError(f"Unknown fill color: {color}")
     packets.append(bytes.fromhex("ac03ca"))
@@ -327,30 +344,32 @@ def _encode_pixels_plane01(pixels: list[list[int]]) -> tuple[bytes, bytes]:
     return bytes(plane0), bytes(plane1)
 
 
-def _build_framed_pixels() -> list[list[int]]:
+def _build_framed_pixels(
+    profile: PandaEslDeviceProfile,
+) -> list[list[int]]:
     """Build the current diagnostic framed image in displayed coordinates.
 
     Top/right borders are inset to avoid the bezel. The final image is flipped
     vertically before encoding because the panel displays the memory top-bottom.
     """
-    width = PANDA_CANVAS_WIDTH
-    height = PANDA_CANVAS_HEIGHT
+    width = profile.width
+    height = profile.height
     display_pixels = [[0 for _x in range(width)] for _y in range(height)]
 
     def draw_rect_frame(left: int, top: int, right: int, bottom: int, color: int, thickness: int = 1) -> None:
         for t in range(thickness):
-            l = left + t
-            r = right - t
-            u = top + t
-            b = bottom - t
-            if l > r or u > b:
+            frame_left = left + t
+            frame_right = right - t
+            frame_top = top + t
+            frame_bottom = bottom - t
+            if frame_left > frame_right or frame_top > frame_bottom:
                 break
-            for x in range(l, r + 1):
-                display_pixels[u][x] = color
-                display_pixels[b][x] = color
-            for y in range(u, b + 1):
-                display_pixels[y][l] = color
-                display_pixels[y][r] = color
+            for x in range(frame_left, frame_right + 1):
+                display_pixels[frame_top][x] = color
+                display_pixels[frame_bottom][x] = color
+            for y in range(frame_top, frame_bottom + 1):
+                display_pixels[y][frame_left] = color
+                display_pixels[y][frame_right] = color
 
     top_inset = 5
     right_inset = 5
@@ -378,9 +397,14 @@ def _build_framed_pixels() -> list[list[int]]:
     return [display_pixels[height - 1 - y][:] for y in range(height)]
 
 
-def _build_framed_packets() -> list[bytes]:
-    plane0, plane1 = _encode_pixels_plane01(_build_framed_pixels())
-    if len(plane0) != PANDA_PLANE_BYTE_COUNT or len(plane1) != PANDA_PLANE_BYTE_COUNT:
+def _build_framed_packets(
+    profile: PandaEslDeviceProfile,
+) -> list[bytes]:
+    plane0, plane1 = _encode_pixels_plane01(_build_framed_pixels(profile))
+    if (
+        len(plane0) != profile.plane_byte_count
+        or len(plane1) != profile.plane_byte_count
+    ):
         raise ValueError(f"Unexpected plane sizes: {len(plane0)}, {len(plane1)}")
     packets: list[bytes] = list(_STANDARD_PREAMBLE)
     packets += _frame_image_chunks(0, plane0)
@@ -424,6 +448,7 @@ def _quantized_preview_png(display_pixels: list[list[int]]) -> bytes:
 def build_packets_from_rendered_image(
     image: Image.Image,
     *,
+    profile: PandaEslDeviceProfile,
     threshold: int = 128,
     red_threshold: int = 128,
 ) -> tuple[list[bytes], bytes, dict[str, Any]]:
@@ -433,15 +458,15 @@ def build_packets_from_rendered_image(
     diagnostic image, the rendered pixels are vertically pre-flipped before the
     existing PANDA plane encoder sees them.
     """
-    if image.size != (PANDA_CANVAS_WIDTH, PANDA_CANVAS_HEIGHT):
-        image = image.resize((PANDA_CANVAS_WIDTH, PANDA_CANVAS_HEIGHT), Image.LANCZOS)
+    if image.size != (profile.width, profile.height):
+        image = image.resize((profile.width, profile.height), Image.LANCZOS)
 
     rgb_image = image.convert("RGB")
     display_pixels: list[list[int]] = []
     counts = {"white": 0, "black": 0, "red": 0}
-    for y in range(PANDA_CANVAS_HEIGHT):
+    for y in range(profile.height):
         row: list[int] = []
-        for x in range(PANDA_CANVAS_WIDTH):
+        for x in range(profile.width):
             red, green, blue = rgb_image.getpixel((x, y))
             color = _image_color_to_pixel(red, green, blue, threshold, red_threshold)
             row.append(color)
@@ -454,10 +479,13 @@ def build_packets_from_rendered_image(
         display_pixels.append(row)
 
     memory_pixels = [
-        display_pixels[PANDA_CANVAS_HEIGHT - 1 - y][:] for y in range(PANDA_CANVAS_HEIGHT)
+        display_pixels[profile.height - 1 - y][:] for y in range(profile.height)
     ]
     plane0, plane1 = _encode_pixels_plane01(memory_pixels)
-    if len(plane0) != PANDA_PLANE_BYTE_COUNT or len(plane1) != PANDA_PLANE_BYTE_COUNT:
+    if (
+        len(plane0) != profile.plane_byte_count
+        or len(plane1) != profile.plane_byte_count
+    ):
         raise ValueError(f"Unexpected plane sizes: {len(plane0)}, {len(plane1)}")
 
     packets: list[bytes] = list(_STANDARD_PREAMBLE)
@@ -466,8 +494,7 @@ def build_packets_from_rendered_image(
     packets.append(bytes.fromhex("ac03ca"))
 
     details: dict[str, Any] = {
-        "canvas_width": PANDA_CANVAS_WIDTH,
-        "canvas_height": PANDA_CANVAS_HEIGHT,
+        **_profile_details(profile),
         "plane_strategy": "0_then_1",
         "threshold": threshold,
         "red_threshold": red_threshold,
@@ -764,7 +791,7 @@ async def _async_send_packets_attempt(
         write_details = {
             **details,
             "address": address,
-            "plane_byte_count": PANDA_PLANE_BYTE_COUNT,
+            **_profile_details(runtime.profile),
             "chunk_payload_size": PANDA_CHUNK_PAYLOAD_SIZE,
             "write_delay_ms": write_delay_ms,
             "preamble": "standard",
@@ -798,6 +825,7 @@ async def _async_send_packets_attempt(
                 "address": address,
                 "action_key": action_key,
                 "result_name": result_name,
+                **_profile_details(runtime.profile),
                 "characteristic": PANDA_FFE1_CHAR_UUID,
                 "characteristic_info": characteristic_info,
                 "write_delay_ms": write_delay_ms,
@@ -838,7 +866,10 @@ async def _async_send_packets_attempt(
         runtime.state.update_write_action(action_key, result_name, details=write_details)
         runtime.coordinator.async_set_updated_data(runtime.state)
     except Exception as err:
-        error_details: dict[str, Any] | None = None
+        error_details: dict[str, Any] = {
+            **details,
+            **_profile_details(runtime.profile),
+        }
         if capture_trace:
             if current_packet_event is not None:
                 current_packet_event["relative_error_ms"] = round(
@@ -876,6 +907,7 @@ async def _async_send_packets_attempt(
                 "address": address,
                 "action_key": action_key,
                 "result_name": result_name + "_error",
+                **_profile_details(runtime.profile),
                 "characteristic": PANDA_FFE1_CHAR_UUID,
                 "write_delay_ms": write_delay_ms,
                 "packet_count": len(packets),
@@ -890,22 +922,23 @@ async def _async_send_packets_attempt(
                 "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
                 "protocol_variant": "v19_ack_gated",
             }
-            error_details = {
-                **details,
-                **trace_summary,
-                "attempt": attempt,
-                "max_attempts": max_attempts,
-                "retry_count": retry_count,
-                "chunk_retry_count": chunk_retry_count,
-                "image_packets_written": image_packets_written,
-                "image_packets_confirmed": image_packets_confirmed,
-                "ack_progress_count": ack_progress_count,
-                "ack_cycle_count": ack_cycle_count,
-                "ack_final_seen": final_ack_seen,
-                "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
-                "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
-                "protocol_variant": "v19_ack_gated",
-            }
+            error_details.update(
+                {
+                    **trace_summary,
+                    "attempt": attempt,
+                    "max_attempts": max_attempts,
+                    "retry_count": retry_count,
+                    "chunk_retry_count": chunk_retry_count,
+                    "image_packets_written": image_packets_written,
+                    "image_packets_confirmed": image_packets_confirmed,
+                    "ack_progress_count": ack_progress_count,
+                    "ack_cycle_count": ack_cycle_count,
+                    "ack_final_seen": final_ack_seen,
+                    "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
+                    "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+                    "protocol_variant": "v19_ack_gated",
+                }
+            )
             try:
                 trace_file = await hass.async_add_executor_job(
                     _write_packet_trace_file,
@@ -1026,10 +1059,15 @@ async def async_write_white_fill(hass: HomeAssistant, runtime: PandaEslRuntimeDa
     await _async_send_packets(
         hass,
         runtime,
-        packets=_build_fill_packets("white"),
+        packets=_build_fill_packets("white", runtime.profile),
         action_key="white_fill",
         result_name="write_white_fill_ok",
-        details={"test_image": "Solid white fill", "color": "white", "plane_strategy": "0_then_1"},
+        details={
+            **_profile_details(runtime.profile),
+            "test_image": "Solid white fill",
+            "color": "white",
+            "plane_strategy": "0_then_1",
+        },
     )
 
 
@@ -1038,10 +1076,15 @@ async def async_write_black_fill(hass: HomeAssistant, runtime: PandaEslRuntimeDa
     await _async_send_packets(
         hass,
         runtime,
-        packets=_build_fill_packets("black"),
+        packets=_build_fill_packets("black", runtime.profile),
         action_key="black_fill",
         result_name="write_black_fill_ok",
-        details={"test_image": "Solid black fill", "color": "black", "plane_strategy": "0_only"},
+        details={
+            **_profile_details(runtime.profile),
+            "test_image": "Solid black fill",
+            "color": "black",
+            "plane_strategy": "0_only",
+        },
     )
 
 
@@ -1050,10 +1093,15 @@ async def async_write_red_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData
     await _async_send_packets(
         hass,
         runtime,
-        packets=_build_fill_packets("red"),
+        packets=_build_fill_packets("red", runtime.profile),
         action_key="red_fill",
         result_name="write_red_fill_ok",
-        details={"test_image": "Solid red fill", "color": "red", "plane_strategy": "1_only"},
+        details={
+            **_profile_details(runtime.profile),
+            "test_image": "Solid red fill",
+            "color": "red",
+            "plane_strategy": "1_only",
+        },
     )
 
 
@@ -1062,13 +1110,12 @@ async def async_write_nearfinal_framed_image(hass: HomeAssistant, runtime: Panda
     await _async_send_packets(
         hass,
         runtime,
-        packets=_build_framed_packets(),
+        packets=_build_framed_packets(runtime.profile),
         action_key="framed_image",
         result_name="write_framed_image_ok",
         details={
+            **_profile_details(runtime.profile),
             "test_image": "Framed image",
-            "canvas_width": PANDA_CANVAS_WIDTH,
-            "canvas_height": PANDA_CANVAS_HEIGHT,
             "plane_strategy": "0_then_1",
             "notes": "top/right inset, vertically pre-flipped",
         },

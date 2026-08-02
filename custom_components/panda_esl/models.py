@@ -10,14 +10,12 @@ from typing import Any
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 from .const import (
     ALI_ESL_SERVICE_UUID,
-    ETAG_525_SERVICE_UUID,
-    ETAG_LOCAL_NAME_PREFIX,
-    KNOWN_TEST_ADDRESS,
-    KNOWN_TEST_NAME,
+    ETAG_SERVICE_UUID,
     LEGACY_FFE0_SERVICE_UUID,
     NORDIC_UART_SERVICE_UUID,
     PANDA_SERVICE_UUID,
 )
+from .profiles import device_profile_from_names
 
 
 def _normalize_address(address: str) -> str:
@@ -38,7 +36,12 @@ def _address_bytes(address: str) -> bytes | None:
 
 def _service_info_name(service_info: BluetoothServiceInfoBleak) -> str:
     """Return the best available advertisement name."""
-    return service_info.name or getattr(service_info, "local_name", None) or ""
+    name = service_info.name
+    local_name = getattr(service_info, "local_name", None)
+    for candidate in (name, local_name):
+        if device_profile_from_names(candidate) is not None:
+            return candidate or ""
+    return name or local_name or ""
 
 
 def _service_uuid_set(service_info: BluetoothServiceInfoBleak) -> set[str]:
@@ -93,42 +96,27 @@ def manufacturer_data_echoes_address(
 
 
 def service_info_supported(service_info: BluetoothServiceInfoBleak) -> bool:
-    """Return true if a Bluetooth advertisement looks like a PANDA ESL tag."""
-    address = _normalize_address(service_info.address)
-    name = _service_info_name(service_info)
-    service_uuids = _service_uuid_set(service_info)
-
-    if address == KNOWN_TEST_ADDRESS:
-        return True
-    if name == KNOWN_TEST_NAME:
-        return True
-    if name.startswith(ETAG_LOCAL_NAME_PREFIX) and PANDA_SERVICE_UUID in service_uuids:
-        return True
-    if name.startswith(ETAG_LOCAL_NAME_PREFIX) and ETAG_525_SERVICE_UUID in service_uuids:
-        return True
-    if PANDA_SERVICE_UUID in service_uuids and ALI_ESL_SERVICE_UUID in service_uuids:
-        return True
-    if name.startswith(ETAG_LOCAL_NAME_PREFIX) and manufacturer_data_echoes_address(
-        address, service_info.manufacturer_data
-    ):
-        return True
-    return False
+    """Return true if an advertisement has a supported ETAG identifier."""
+    return (
+        device_profile_from_names(
+            service_info.name,
+            getattr(service_info, "local_name", None),
+        )
+        is not None
+    )
 
 
 def service_info_matches_target(
     service_info: BluetoothServiceInfoBleak, target_address: str
 ) -> bool:
     """Return true if an advertisement matches this configured tag."""
-    if _normalize_address(service_info.address) == _normalize_address(target_address):
-        return True
-    return service_info_supported(service_info)
+    return _normalize_address(service_info.address) == _normalize_address(target_address)
 
 
 def service_info_interesting(
     service_info: BluetoothServiceInfoBleak, target_address: str
 ) -> bool:
     """Return true if an advertisement is useful scan context for this tag."""
-    address = _normalize_address(service_info.address)
     name = _service_info_name(service_info)
     service_uuids = _service_uuid_set(service_info)
     interesting_names = ("ETAG-", "HOLY", "525", "530", "534")
@@ -138,7 +126,7 @@ def service_info_interesting(
         or name.startswith(interesting_names)
         or PANDA_SERVICE_UUID in service_uuids
         or ALI_ESL_SERVICE_UUID in service_uuids
-        or ETAG_525_SERVICE_UUID in service_uuids
+        or ETAG_SERVICE_UUID in service_uuids
         or LEGACY_FFE0_SERVICE_UUID in service_uuids
         or NORDIC_UART_SERVICE_UUID in service_uuids
         or manufacturer_data_echoes_address(
@@ -355,6 +343,9 @@ class PandaEslState:
             compact_keys = (
                 "color",
                 "test_image",
+                "device_profile",
+                "device_family",
+                "screen_size_inches",
                 "plane_strategy",
                 "canvas_width",
                 "canvas_height",

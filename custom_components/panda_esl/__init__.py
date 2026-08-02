@@ -27,6 +27,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     CONF_DEBOUNCE_MS,
+    CONF_DISCOVERED_NAME,
     CONF_PREVENT_DUPLICATE_SEND,
     CONF_RETRY_COUNT,
     CONF_WRITE_DELAY_MS,
@@ -35,19 +36,17 @@ from .const import (
     DEFAULT_RETRY_COUNT,
     DEFAULT_WRITE_DELAY_MS,
     DOMAIN,
-    MAX_RETRY_COUNT,
-    ETAG_525_SERVICE_UUID,
+    ETAG_SERVICE_UUID,
     MANUFACTURER,
-    MODEL,
+    MAX_RETRY_COUNT,
     PACKET_NOTIFICATION_CAPTURE,
     PANDA_SERVICE_UUID,
     WRITE_LOCK,
 )
 from .models import PandaEslState, service_info_matches_target, title_from_service_info
+from .profiles import device_profile_from_names
 from .renderer import blank_png, render_service_image
 from .runtime import (
-    PANDA_CANVAS_HEIGHT,
-    PANDA_CANVAS_WIDTH,
     PandaEslRuntimeData,
     async_write_rendered_packets,
     build_packets_from_rendered_image,
@@ -142,12 +141,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         state = PandaEslState(address=address, name=configured_name)
         name = configured_name
 
+    profile = device_profile_from_names(
+        last_service_info.name if last_service_info is not None else None,
+        (
+            getattr(last_service_info, "local_name", None)
+            if last_service_info is not None
+            else None
+        ),
+        entry.data.get(CONF_DISCOVERED_NAME),
+    )
+    if profile is None:
+        _LOGGER.error(
+            "PANDA ESL %s does not advertise a supported ETAG-525 or ETAG-526 identifier",
+            address,
+        )
+        return False
+
     coordinator: DataUpdateCoordinator[PandaEslState] = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=f"{DOMAIN}_{address}",
     )
-    blank_image = blank_png(PANDA_CANVAS_WIDTH, PANDA_CANVAS_HEIGHT)
+    blank_image = blank_png(profile.width, profile.height)
     image_coordinator: DataUpdateCoordinator[bytes] = DataUpdateCoordinator(
         hass,
         _LOGGER,
@@ -163,6 +178,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator=coordinator,
         image_coordinator=image_coordinator,
         preview_coordinator=preview_coordinator,
+        profile=profile,
         packet_notification_capture=bool(
             entry.data.get(PACKET_NOTIFICATION_CAPTURE, False)
         ),
@@ -177,7 +193,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         connections={(CONNECTION_BLUETOOTH, address)},
         identifiers={(DOMAIN, address)},
         manufacturer=MANUFACTURER,
-        model=MODEL,
+        model=profile.model,
         name=name,
     )
 
@@ -187,6 +203,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     domain_data[entry.entry_id] = {
         "address": address,
         "device_id": device_entry.id,
+        "device_profile": profile.key,
         "last_image_data": None,
         "write_pending": False,
         WRITE_LOCK: bool(entry.data.get(WRITE_LOCK, False)),
@@ -242,7 +259,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bluetooth.async_register_callback(
             hass,
             _async_discovered_device,
-            {"service_uuid": ETAG_525_SERVICE_UUID, "connectable": False},
+            {"service_uuid": ETAG_SERVICE_UUID, "connectable": False},
             BluetoothScanningMode.ACTIVE,
         )
     )
@@ -409,8 +426,8 @@ async def _async_build_service_context(
         render_service_image,
         hass,
         dict(service.data),
-        PANDA_CANVAS_WIDTH,
-        PANDA_CANVAS_HEIGHT,
+        runtime.profile.width,
+        runtime.profile.height,
     )
     rendered_image = await hass.async_add_executor_job(render_job)
     packet_job = partial(
@@ -418,6 +435,7 @@ async def _async_build_service_context(
         rendered_image,
         threshold=threshold,
         red_threshold=red_threshold,
+        profile=runtime.profile,
     )
     packets, current_image_data, render_details = await hass.async_add_executor_job(
         packet_job
