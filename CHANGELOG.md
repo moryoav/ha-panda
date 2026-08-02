@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13 - 2026-08-02
+
+- Add a font preview gallery for the bundled and optional text fonts.
+- Simplify HACS installation instructions now that PANDA ESL is available in the default HACS catalog.
+
 ## 0.1.12 - 2026-06-27
 
 - Trim the HACS runtime package by keeping only the default Noto Sans KR fonts and Material Design Icons files inside the integration.
