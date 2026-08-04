@@ -10,6 +10,10 @@ Start with the project documentation:
 - `examples/` for ready-to-adapt Home Assistant service payloads.
 - `CHANGELOG.md` for release notes and behavior changes.
 
+## Share Your Project
+
+Made something with PANDA ESL? Post a photo in the [Home Assistant Community thread](https://community.home-assistant.io/t/panda-e-ink-ble-electronic-shelf-label-esl/1013663). Feel free to share the YAML too.
+
 ## Reporting Bugs
 
 Use the bug report issue template when something is not working as expected.
