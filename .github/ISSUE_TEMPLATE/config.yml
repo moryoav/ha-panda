@@ -3,6 +3,9 @@ contact_links:
   - name: Support and troubleshooting
     url: https://github.com/moryoav/ha-panda/blob/main/SUPPORT.md
     about: Read support guidance before opening an issue.
+  - name: Share your PANDA ESL project
+    url: https://community.home-assistant.io/t/panda-e-ink-ble-electronic-shelf-label-esl/1013663
+    about: Post photos and YAML examples in the Home Assistant Community thread.
   - name: Security policy
     url: https://github.com/moryoav/ha-panda/blob/main/SECURITY.md
     about: Report security concerns privately when possible.
