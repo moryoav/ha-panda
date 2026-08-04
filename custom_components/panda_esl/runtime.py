@@ -246,23 +246,21 @@ def _build_fill_packets(
     color: str,
     profile: PandaEslDeviceProfile,
 ) -> list[bytes]:
-    """Build reliable full-screen fill packets.
-
-    Discovered color model:
-      white -> plane 0 = 1, plane 1 = 0
-      black -> plane 0 = 0
-      red   -> plane 1 = 1
-    """
-    packets: list[bytes] = list(_STANDARD_PREAMBLE)
-    if color == "white":
-        packets += _frame_image_chunks(0, bytes([0xFF]) * profile.plane_byte_count)
-        packets += _frame_image_chunks(1, bytes([0x00]) * profile.plane_byte_count)
-    elif color == "black":
-        packets += _frame_image_chunks(0, bytes([0x00]) * profile.plane_byte_count)
-    elif color == "red":
-        packets += _frame_image_chunks(1, bytes([0xFF]) * profile.plane_byte_count)
-    else:
+    """Build state-independent full-screen fill packets for both color planes."""
+    plane_values = {
+        "white": (0xFF, 0x00),
+        "black": (0x00, 0x00),
+        "red": (0xFF, 0xFF),
+    }
+    if color not in plane_values:
         raise ValueError(f"Unknown fill color: {color}")
+
+    packets: list[bytes] = list(_STANDARD_PREAMBLE)
+    for plane, value in enumerate(plane_values[color]):
+        packets += _frame_image_chunks(
+            plane,
+            bytes([value]) * profile.plane_byte_count,
+        )
     packets.append(bytes.fromhex("ac03ca"))
     return packets
 
@@ -1083,7 +1081,7 @@ async def async_write_black_fill(hass: HomeAssistant, runtime: PandaEslRuntimeDa
             **_profile_details(runtime.profile),
             "test_image": "Solid black fill",
             "color": "black",
-            "plane_strategy": "0_only",
+            "plane_strategy": "0_then_1",
         },
     )
 
@@ -1100,7 +1098,7 @@ async def async_write_red_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData
             **_profile_details(runtime.profile),
             "test_image": "Solid red fill",
             "color": "red",
-            "plane_strategy": "1_only",
+            "plane_strategy": "0_then_1",
         },
     )
 

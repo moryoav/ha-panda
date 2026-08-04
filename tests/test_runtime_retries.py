@@ -325,19 +325,40 @@ def test_target_match_does_not_cross_update_supported_tags() -> None:
         (ETAG_526_PROFILE, 5624, 113, 230, 24),
     ],
 )
-def test_white_fill_packet_geometry(
+@pytest.mark.parametrize(
+    ("color", "expected_plane_bytes"),
+    [
+        ("white", (b"\xff", b"\x00")),
+        ("black", (b"\x00", b"\x00")),
+        ("red", (b"\xff", b"\xff")),
+    ],
+)
+def test_fill_packet_geometry(
     profile: Any,
     plane_bytes: int,
     chunks_per_plane: int,
     packet_count: int,
     tail_bytes: int,
+    color: str,
+    expected_plane_bytes: tuple[bytes, bytes],
 ) -> None:
-    """Each supported profile should send complete white color planes."""
-    packets = panda_runtime._build_fill_packets("white", profile)
+    """Every fill should replace both color planes for every supported profile."""
+    packets = panda_runtime._build_fill_packets(color, profile)
 
     assert profile.plane_byte_count == plane_bytes
     assert len(packets) == packet_count
-    for plane, expected_byte in ((0, b"\xff"), (1, b"\x00")):
+    assert packets[: len(panda_runtime._STANDARD_PREAMBLE)] == list(
+        panda_runtime._STANDARD_PREAMBLE
+    )
+    assert packets[-1] == bytes.fromhex("ac03ca")
+    image_planes = [
+        int(decoded["plane"])
+        for packet in packets
+        if (decoded := panda_runtime._decode_packet(packet)).get("kind")
+        == "image_chunk"
+    ]
+    assert image_planes == [0] * chunks_per_plane + [1] * chunks_per_plane
+    for plane, expected_byte in enumerate(expected_plane_bytes):
         chunks = _image_chunks(packets, plane)
         decoded = [panda_runtime._decode_packet(packet) for packet in chunks]
         payload = b"".join(packet[9:-1] for packet in chunks)
@@ -349,6 +370,12 @@ def test_white_fill_packet_geometry(
         assert {item["chunk_total"] for item in decoded} == {chunks_per_plane}
         assert decoded[-1]["actual_payload_len"] == tail_bytes
         assert payload == expected_byte * plane_bytes
+
+
+def test_fill_packet_builder_rejects_unknown_color() -> None:
+    """Unknown fill names should fail instead of sending an ambiguous image."""
+    with pytest.raises(ValueError, match="Unknown fill color"):
+        panda_runtime._build_fill_packets("blue", ETAG_525_PROFILE)
 
 
 def test_rendered_image_uses_etag_526_canvas_and_planes() -> None:
