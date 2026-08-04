@@ -228,6 +228,8 @@ Example scripts for the 256x128 PANDA display live in [examples](examples/).
 | 2.13" (256x128) | Weather today | ![Weather today example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather-today.png) | [2.13" Weather today](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-today.yaml) |
 | 2.13" (256x128) | Weather forecast | ![Weather forecast example](https://raw.githubusercontent.com/moryoav/ha-panda/main/images/weather.png) | [2.13" Weather forecast](https://github.com/moryoav/ha-panda/blob/main/examples/2.13-weather-forecast.yaml) |
 
+Made something cool with PANDA ESL? Post a photo or screenshot in the [PANDA ESL thread on the Home Assistant Community forum](https://community.home-assistant.io/t/panda-e-ink-ble-electronic-shelf-label-esl/1013663). Feel free to include the YAML too.
+
 ## Use Cases
 
 - Show a small daily calendar, weather forecast, or reminder on a shelf label.

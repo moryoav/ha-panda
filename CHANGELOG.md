@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.16 - 2026-08-04
+
+- Add a Home Assistant Community forum link for sharing PANDA ESL projects.
+
 ## 0.1.15 - 2026-08-04
 
 - Make the black and red diagnostic fills replace both display color planes, preventing pixels from earlier images from remaining visible. Thanks to @chrisrock1984 for reporting the behavior.
