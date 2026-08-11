@@ -6,6 +6,8 @@
 [![Local Push][iot-badge]][iot-url]
 [![License: MIT][license-badge]][license-url]
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y5B124NZ2L)
+
 [hacs-badge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square
 [hacs-url]: https://www.hacs.xyz/
 [ha-badge]: https://img.shields.io/badge/Home%20Assistant-2024.6%2B-18BCF2.svg?style=flat-square
