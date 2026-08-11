@@ -16,4 +16,7 @@ custom_components/*.zip
 deps/
 tts/
 home-assistant.log*
+
+# Local agent notes
+AGENTS.md
 agents.md
