@@ -44,11 +44,36 @@ ETAG_526_PROFILE = PandaEslDeviceProfile(
     height=152,
 )
 
+ETAG_530_PROFILE = PandaEslDeviceProfile(
+    key="etag_530",
+    family="530",
+    tag_prefix="ETAG-530",
+    model='3.5" BLE price tag',
+    screen_size_inches="3.5",
+    width=360,
+    height=240,
+)
+
+ETAG_534_PROFILE = PandaEslDeviceProfile(
+    key="etag_534",
+    family="534",
+    tag_prefix="ETAG-534",
+    model='4.2" BLE price tag',
+    screen_size_inches="4.2",
+    width=400,
+    height=300,
+)
+
 DEFAULT_DEVICE_PROFILE = ETAG_525_PROFILE
-SUPPORTED_DEVICE_PROFILES = (ETAG_525_PROFILE, ETAG_526_PROFILE)
+SUPPORTED_DEVICE_PROFILES = (
+    ETAG_525_PROFILE,
+    ETAG_526_PROFILE,
+    ETAG_530_PROFILE,
+    ETAG_534_PROFILE,
+)
 _PROFILES_BY_FAMILY = {profile.family: profile for profile in SUPPORTED_DEVICE_PROFILES}
 _ETAG_ID_PATTERN = re.compile(
-    r"^ETAG-(?P<family>525|526)[0-9A-F]{7}$",
+    r"^ETAG-(?P<family>525|526|530|534)[0-9A-F]{7}$",
     re.IGNORECASE,
 )
 

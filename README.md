@@ -47,6 +47,8 @@ Supported advertised PANDA / ETAG device families:
 | --- | --- | --- |
 | `ETAG-525...` | 2.13 inch | 256x128 |
 | `ETAG-526...` | 2.66 inch | 296x152 |
+| `ETAG-530...` | 3.5 inch | 360x240 |
+| `ETAG-534...` | 4.2 inch | 400x300 |
 
 Confirmed working product: [PANDA / ETAG BLE electronic shelf label](https://s.click.aliexpress.com/e/_c4Kgtn93)
 
@@ -58,8 +60,8 @@ Unsupported or unverified devices:
 
 - Wi-Fi or cloud-managed ESL labels
 - BLE labels that do not use the PANDA `AC ... CA` image packet protocol
-- ETAG device families other than `ETAG-525...` and `ETAG-526...`
-- Displays with a resolution other than 256x128 or 296x152
+- ETAG device families other than `ETAG-525...`, `ETAG-526...`, `ETAG-530...`, and `ETAG-534...`
+- Displays with a resolution other than 256x128, 296x152, 360x240, or 400x300
 
 ## Installation
 
@@ -244,7 +246,7 @@ Made something cool with PANDA ESL? Post a photo or screenshot in the [PANDA ESL
 - The known-good PANDA write path sends two image planes through the `0000ffe1-0000-1000-8000-00805f9b34fb` characteristic using the reverse-engineered `AC ... CA` packet framing.
 - PANDA image chunks are ACK-gated using device progress notifications. A timed-out chunk aborts the current connection and uses the configured full write retry.
 - The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
-- The canvas is selected from the advertised tag ID: 256x128 for ETAG-525 and 296x152 for ETAG-526.
+- The canvas is selected from the advertised tag ID: 256x128 for ETAG-525, 296x152 for ETAG-526, 360x240 for ETAG-530, and 400x300 for ETAG-534.
 - Yellow payload colors are rendered as red on PANDA hardware.
 - A label must be visible to Home Assistant Bluetooth before a physical write can start.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.

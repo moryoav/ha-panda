@@ -72,6 +72,8 @@ panda_profiles = _load_submodule("profiles")
 PandaEslState = panda_models.PandaEslState
 ETAG_525_PROFILE = panda_profiles.ETAG_525_PROFILE
 ETAG_526_PROFILE = panda_profiles.ETAG_526_PROFILE
+ETAG_530_PROFILE = panda_profiles.ETAG_530_PROFILE
+ETAG_534_PROFILE = panda_profiles.ETAG_534_PROFILE
 
 
 ADDRESS = "48:87:2D:C4:90:EA"
@@ -271,6 +273,8 @@ def _install_clients(
     [
         ("ETAG-52500033D0", ETAG_525_PROFILE),
         ("etag-52600013a5", ETAG_526_PROFILE),
+        ("ETAG-53000033D0", ETAG_530_PROFILE),
+        ("etag-53400013a5", ETAG_534_PROFILE),
     ],
 )
 def test_device_profile_is_encoded_in_tag_id(
@@ -286,7 +290,9 @@ def test_device_profile_is_encoded_in_tag_id(
     [
         "ETAG-52400033D0",
         "ETAG-52700033D0",
-        "ETAG-53000033D0",
+        "ETAG-53100033D0",
+        "ETAG-53300033D0",
+        "ETAG-53500033D0",
         "ETAG-525",
         "ETAG-52600013A5-extra",
         "HOLY-IOT",
@@ -303,6 +309,10 @@ def test_supported_device_filter_uses_name_and_local_name() -> None:
     assert panda_models.service_info_supported(_service_info("ETAG-52500033D0"))
     assert panda_models.service_info_supported(
         _service_info("Generic BLE", local_name="ETAG-52600013A5")
+    )
+    assert panda_models.service_info_supported(_service_info("ETAG-53000033D0"))
+    assert panda_models.service_info_supported(
+        _service_info("Generic BLE", local_name="ETAG-53400013A5")
     )
     assert not panda_models.service_info_supported(_service_info("ETAG-52700033D0"))
 
@@ -323,6 +333,8 @@ def test_target_match_does_not_cross_update_supported_tags() -> None:
     [
         (ETAG_525_PROFILE, 4096, 82, 168, 46),
         (ETAG_526_PROFILE, 5624, 113, 230, 24),
+        (ETAG_530_PROFILE, 10800, 216, 436, 50),
+        (ETAG_534_PROFILE, 15200, 304, 612, 50),
     ],
 )
 @pytest.mark.parametrize(
@@ -378,47 +390,72 @@ def test_fill_packet_builder_rejects_unknown_color() -> None:
         panda_runtime._build_fill_packets("blue", ETAG_525_PROFILE)
 
 
-def test_rendered_image_uses_etag_526_canvas_and_planes() -> None:
-    """Rendered writes should preserve the full 296x152 ETAG-526 canvas."""
+@pytest.mark.parametrize(
+    ("profile", "width", "height", "chunks_per_plane", "plane_bytes"),
+    [
+        (ETAG_526_PROFILE, 296, 152, 113, 5624),
+        (ETAG_530_PROFILE, 360, 240, 216, 10800),
+        (ETAG_534_PROFILE, 400, 300, 304, 15200),
+    ],
+)
+def test_rendered_image_uses_profile_canvas_and_planes(
+    profile: Any,
+    width: int,
+    height: int,
+    chunks_per_plane: int,
+    plane_bytes: int,
+) -> None:
+    """Rendered writes should preserve each supported non-default canvas."""
     source = Image.new(
         "RGB",
-        (ETAG_526_PROFILE.width, ETAG_526_PROFILE.height),
+        (profile.width, profile.height),
         "white",
     )
 
     packets, preview_png, details = panda_runtime.build_packets_from_rendered_image(
         source,
-        profile=ETAG_526_PROFILE,
+        profile=profile,
     )
 
     with Image.open(BytesIO(preview_png)) as preview:
-        assert preview.size == (296, 152)
-    assert len(_image_chunks(packets, 0)) == 113
-    assert len(_image_chunks(packets, 1)) == 113
-    assert details["device_profile"] == "etag_526"
-    assert details["canvas_width"] == 296
-    assert details["canvas_height"] == 152
-    assert details["plane_byte_count"] == 5624
+        assert preview.size == (width, height)
+    assert len(_image_chunks(packets, 0)) == chunks_per_plane
+    assert len(_image_chunks(packets, 1)) == chunks_per_plane
+    assert details["device_profile"] == profile.key
+    assert details["canvas_width"] == width
+    assert details["canvas_height"] == height
+    assert details["plane_byte_count"] == plane_bytes
     assert details["pixel_counts"] == {
-        "white": 296 * 152,
+        "white": width * height,
         "black": 0,
         "red": 0,
     }
 
 
 @pytest.mark.usefixtures("retry_test_setup")
-async def test_etag_526_full_write_completes_two_ack_cycles(
+@pytest.mark.parametrize(
+    ("profile", "packet_count", "image_packet_count"),
+    [
+        (ETAG_526_PROFILE, 230, 226),
+        (ETAG_530_PROFILE, 436, 432),
+        (ETAG_534_PROFILE, 612, 608),
+    ],
+)
+async def test_non_default_profile_full_write_completes_two_ack_cycles(
     monkeypatch: pytest.MonkeyPatch,
+    profile: Any,
+    packet_count: int,
+    image_packet_count: int,
 ) -> None:
-    """The larger profile should confirm all 226 chunks and the final commit."""
+    """Larger profiles should confirm every chunk and the final commit."""
     client = FakeBleClient()
     _install_clients(monkeypatch, [client])
-    runtime, _coordinator = _runtime_data(ETAG_526_PROFILE)
+    runtime, _coordinator = _runtime_data(profile)
 
     await panda_runtime._async_send_packets(
         FakeHass(),
         runtime,
-        packets=panda_runtime._build_fill_packets("white", ETAG_526_PROFILE),
+        packets=panda_runtime._build_fill_packets("white", profile),
         action_key="white_fill",
         result_name="write_white_fill_ok",
         details={},
@@ -427,14 +464,14 @@ async def test_etag_526_full_write_completes_two_ack_cycles(
     )
 
     attrs = runtime.state.write_action_results["white_fill"]
-    assert len(client.writes) == 230
-    assert attrs["device_profile"] == "etag_526"
-    assert attrs["image_packets_written"] == 226
-    assert attrs["image_packets_confirmed"] == 226
-    assert attrs["ack_progress_count"] == 226
+    assert len(client.writes) == packet_count
+    assert attrs["device_profile"] == profile.key
+    assert attrs["image_packets_written"] == image_packet_count
+    assert attrs["image_packets_confirmed"] == image_packet_count
+    assert attrs["ack_progress_count"] == image_packet_count
     assert attrs["ack_cycle_count"] == 2
     assert attrs["ack_final_seen"] is True
-    assert runtime.state.write_progress_chunks_total == 226
+    assert runtime.state.write_progress_chunks_total == image_packet_count
     assert runtime.state.write_progress_percent == 100.0
 
 

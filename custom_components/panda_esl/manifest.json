@@ -14,6 +14,14 @@
       "connectable": false
     },
     {
+      "local_name": "ETAG-530*",
+      "connectable": false
+    },
+    {
+      "local_name": "ETAG-534*",
+      "connectable": false
+    },
+    {
       "service_uuid": "18424398-7cbc-11e9-8f9e-2a86e4005a59",
       "connectable": false
     },
@@ -39,5 +47,5 @@
     "python-barcode==0.15.1",
     "pyStrich==0.9"
   ],
-  "version": "0.1.16"
+  "version": "0.1.17"
 }

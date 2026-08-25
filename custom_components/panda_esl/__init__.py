@@ -152,7 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     if profile is None:
         _LOGGER.error(
-            "PANDA ESL %s does not advertise a supported ETAG-525 or ETAG-526 identifier",
+            "PANDA ESL %s does not advertise a supported ETAG-525, ETAG-526, ETAG-530, or ETAG-534 identifier",
             address,
         )
         return False

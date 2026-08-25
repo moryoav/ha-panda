@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.17 - 2026-08-25
+
+- Add support for 3.5-inch 360x240 `ETAG-530` and 4.2-inch 400x300 `ETAG-534` labels.
+- Discover both new device families and select their render and write geometry from the advertised tag ID.
+
 ## 0.1.16 - 2026-08-04
 
 - Add a Home Assistant Community forum link for sharing PANDA ESL projects.
