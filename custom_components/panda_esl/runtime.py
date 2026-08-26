@@ -110,7 +110,7 @@ def _progress_ack_value(data: bytes) -> int | None:
 
 
 def _battery_percentage_from_notification(data: bytes) -> int | None:
-    """Return a battery percentage from a PANDA device-info notification."""
+    """Return a battery percentage from a PANDA status notification."""
     if len(data) < 3 or data[0] != 0x91 or data[-1] != 0x19:
         return None
 
@@ -119,6 +119,8 @@ def _battery_percentage_from_notification(data: bytes) -> int | None:
         percentage = data[10]
     elif data[1] == 0x05 and len(data) >= 6:
         percentage = data[4]
+    elif data[1] == 0x08 and len(data) == 4:
+        percentage = data[2]
 
     if percentage is None or not 0 <= percentage <= 100:
         return None
@@ -494,6 +496,28 @@ def _quantized_preview_png(display_pixels: list[list[int]]) -> bytes:
     output = BytesIO()
     image.save(output, "PNG")
     return output.getvalue()
+
+
+def _fill_preview_png(color: str, profile: PandaEslDeviceProfile) -> bytes:
+    """Return a PNG preview for a diagnostic solid-color fill."""
+    pixel_values = {
+        "white": 0,
+        "black": 1,
+        "red": 2,
+    }
+    if color not in pixel_values:
+        raise ValueError(f"Unknown fill color: {color}")
+    pixel_value = pixel_values[color]
+    return _quantized_preview_png(
+        [[pixel_value] * profile.width for _y in range(profile.height)]
+    )
+
+
+def _framed_preview_png(profile: PandaEslDeviceProfile) -> bytes:
+    """Return a PNG preview of the diagnostic frame in display coordinates."""
+    memory_pixels = _build_framed_pixels(profile)
+    display_pixels = list(reversed(memory_pixels))
+    return _quantized_preview_png(display_pixels)
 
 
 def build_packets_from_rendered_image(
@@ -1138,12 +1162,36 @@ async def async_write_rendered_packets(
     )
 
 
-async def async_write_white_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData) -> None:
-    """Send a solid white fill."""
+async def _async_write_diagnostic_image(
+    hass: HomeAssistant,
+    runtime: PandaEslRuntimeData,
+    *,
+    packets: list[bytes],
+    image_data: bytes,
+    action_key: str,
+    result_name: str,
+    details: dict[str, Any],
+) -> None:
+    """Publish and send a diagnostic image using normal image semantics."""
+    runtime.preview_coordinator.async_set_updated_data(image_data)
     await _async_send_packets(
         hass,
         runtime,
+        packets=packets,
+        action_key=action_key,
+        result_name=result_name,
+        details=details,
+    )
+    runtime.image_coordinator.async_set_updated_data(image_data)
+
+
+async def async_write_white_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData) -> None:
+    """Send a solid white fill."""
+    await _async_write_diagnostic_image(
+        hass,
+        runtime,
         packets=_build_fill_packets("white", runtime.profile),
+        image_data=_fill_preview_png("white", runtime.profile),
         action_key="white_fill",
         result_name="write_white_fill_ok",
         details={
@@ -1157,10 +1205,11 @@ async def async_write_white_fill(hass: HomeAssistant, runtime: PandaEslRuntimeDa
 
 async def async_write_black_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData) -> None:
     """Send a solid black fill."""
-    await _async_send_packets(
+    await _async_write_diagnostic_image(
         hass,
         runtime,
         packets=_build_fill_packets("black", runtime.profile),
+        image_data=_fill_preview_png("black", runtime.profile),
         action_key="black_fill",
         result_name="write_black_fill_ok",
         details={
@@ -1174,10 +1223,11 @@ async def async_write_black_fill(hass: HomeAssistant, runtime: PandaEslRuntimeDa
 
 async def async_write_red_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData) -> None:
     """Send a solid red fill."""
-    await _async_send_packets(
+    await _async_write_diagnostic_image(
         hass,
         runtime,
         packets=_build_fill_packets("red", runtime.profile),
+        image_data=_fill_preview_png("red", runtime.profile),
         action_key="red_fill",
         result_name="write_red_fill_ok",
         details={
@@ -1191,10 +1241,11 @@ async def async_write_red_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData
 
 async def async_write_nearfinal_framed_image(hass: HomeAssistant, runtime: PandaEslRuntimeData) -> None:
     """Send the diagnostic framed image."""
-    await _async_send_packets(
+    await _async_write_diagnostic_image(
         hass,
         runtime,
         packets=_build_framed_packets(runtime.profile),
+        image_data=_framed_preview_png(runtime.profile),
         action_key="framed_image",
         result_name="write_framed_image_ok",
         details={

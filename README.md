@@ -213,11 +213,11 @@ See [Font Previews](docs/font-previews.md) for dry-run examples of each bundled 
 
 ## Data Updates
 
-PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write, and Home Assistant restores their last retained images after restarts. The integration does not poll a cloud service.
+PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime state when Bluetooth advertisements are received and marks write buttons unavailable when the label leaves the Bluetooth cache. Image entities update only after a render or successful write, and Home Assistant restores their last retained images after restarts. Diagnostic fill and framed-image buttons update Preview content when pressed and Last updated content after the BLE transfer succeeds. The integration does not poll a cloud service.
 
 The Bluetooth RSSI sensor updates from the latest advertisement Home Assistant receives for the label. It is a last-advertised signal value in dBm, not a continuously measured connection-quality percentage.
 
-Each physical display write sends the PANDA device-information request after notifications start. A valid modern or legacy reply updates the Battery sensor in percent. The query is best-effort: labels that do not reply still continue the display transfer, and dry runs or skipped guarded writes do not query the label. The sensor remains unavailable until the first battery reply and is refreshed only by later physical display writes; there is no polling or manual battery-refresh action.
+Each physical display write sends the PANDA device-information request after notifications start. A valid modern, legacy, or display-status reply updates the Battery sensor in percent. The query is best-effort: labels that do not reply still continue the display transfer, and dry runs or skipped guarded writes do not query the label. The sensor remains unavailable until the first battery reply and is refreshed only by later physical display writes; there is no polling or manual battery-refresh action.
 
 Writes use a connectable BLE handle at action time. If no connectable handle is available, Home Assistant raises a translated action error and records the failure in the diagnostic attributes.
 

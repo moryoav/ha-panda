@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.21 - 2026-08-26
+
+- Update Preview content when a diagnostic fill or framed-image button is pressed, and update Last updated content after the transfer succeeds.
+- Refresh the Battery sensor from the `91 08 <percent> 19` status notification observed during diagnostic and service display writes.
+
 ## 0.1.20 - 2026-08-26
 
 - Add a battery percentage diagnostic sensor that requests device information during physical display writes.

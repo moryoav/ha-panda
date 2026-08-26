@@ -97,6 +97,19 @@ class FakeCoordinator:
         )
 
 
+class FakeImageCoordinator:
+    """Capture image coordinator updates."""
+
+    def __init__(self) -> None:
+        self.data: bytes | None = None
+        self.updates: list[bytes] = []
+
+    def async_set_updated_data(self, data: bytes) -> None:
+        """Record an image update."""
+        self.data = data
+        self.updates.append(data)
+
+
 class FakeHass:
     """Minimal Home Assistant object used by the packet writer."""
 
@@ -118,12 +131,14 @@ class FakeBleClient:
         start_notify_error: Exception | None = None,
         battery_percentage: int | None = None,
         legacy_battery_response: bool = False,
+        status_battery_response: bool = False,
     ) -> None:
         self.drop_once = drop_once or set()
         self.always_drop = always_drop or set()
         self.start_notify_error = start_notify_error
         self.battery_percentage = battery_percentage
         self.legacy_battery_response = legacy_battery_response
+        self.status_battery_response = status_battery_response
         self.notify_callback: Any | None = None
         self.writes: list[bytes] = []
         self.write_counts: dict[tuple[int, int], int] = {}
@@ -156,6 +171,7 @@ class FakeBleClient:
         if (
             packet == panda_runtime.PANDA_DEVICE_INFO_REQUEST
             and self.battery_percentage is not None
+            and not self.status_battery_response
         ):
             if self.legacy_battery_response:
                 self._emit(
@@ -182,6 +198,12 @@ class FakeBleClient:
                         )
                     )
                 )
+        elif (
+            packet == bytes.fromhex("ac07ca")
+            and self.battery_percentage is not None
+            and self.status_battery_response
+        ):
+            self._emit(bytes((0x91, 0x08, self.battery_percentage, 0x19)))
         decoded = panda_runtime._decode_packet(packet)
         kind = decoded.get("kind")
         if kind == "image_chunk":
@@ -230,8 +252,8 @@ def _runtime_data(
     runtime = panda_runtime.PandaEslRuntimeData(
         state=PandaEslState(address=ADDRESS),
         coordinator=coordinator,
-        image_coordinator=FakeCoordinator(),
-        preview_coordinator=FakeCoordinator(),
+        image_coordinator=FakeImageCoordinator(),
+        preview_coordinator=FakeImageCoordinator(),
         profile=profile,
     )
     return runtime, coordinator
@@ -366,7 +388,9 @@ def test_target_match_does_not_cross_update_supported_tags() -> None:
     [
         (bytes.fromhex("910003020000000000006419"), 100),
         (bytes.fromhex("910503026419"), 100),
+        (bytes.fromhex("91086419"), 100),
         (bytes.fromhex("910003020000000000006519"), None),
+        (bytes.fromhex("91086519"), None),
         (bytes.fromhex("91060019"), None),
         (bytes.fromhex("9100030200000000000064"), None),
     ],
@@ -674,6 +698,80 @@ async def test_display_write_updates_battery_from_device_info_notification(
     assert runtime.state.battery_last_updated is not None
     assert attrs["battery_query_sent"] is True
     assert attrs["battery_percentage"] == 87
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+@pytest.mark.parametrize(
+    ("write_fn", "action_key", "expected_rgb"),
+    [
+        (panda_runtime.async_write_white_fill, "white_fill", (255, 255, 255)),
+        (panda_runtime.async_write_black_fill, "black_fill", (0, 0, 0)),
+        (panda_runtime.async_write_red_fill, "red_fill", (255, 0, 0)),
+        (
+            panda_runtime.async_write_nearfinal_framed_image,
+            "framed_image",
+            None,
+        ),
+    ],
+)
+async def test_diagnostic_write_updates_battery_preview_and_last_content(
+    monkeypatch: pytest.MonkeyPatch,
+    write_fn: Any,
+    action_key: str,
+    expected_rgb: tuple[int, int, int] | None,
+) -> None:
+    """Diagnostic writes should publish their image and observed status battery."""
+    client = FakeBleClient(
+        battery_percentage=100,
+        status_battery_response=True,
+    )
+    _install_clients(monkeypatch, [client])
+    runtime, _coordinator = _runtime_data()
+
+    await write_fn(FakeHass(), runtime)
+
+    preview = runtime.preview_coordinator
+    last_updated = runtime.image_coordinator
+    assert preview.data is not None
+    assert preview.updates == [preview.data]
+    assert last_updated.data == preview.data
+    assert last_updated.updates == [preview.data]
+    with Image.open(BytesIO(preview.data)) as image:
+        assert image.size == (runtime.profile.width, runtime.profile.height)
+        if expected_rgb is not None:
+            center = (runtime.profile.width // 2, runtime.profile.height // 2)
+            assert image.getpixel(center) == expected_rgb
+        else:
+            assert image.getpixel((12, 14)) == (0, 0, 0)
+            assert image.getpixel((12, runtime.profile.height - 15)) == (255, 0, 0)
+
+    attrs = runtime.state.write_action_results[action_key]
+    assert runtime.state.battery_percentage == 100
+    assert attrs["battery_percentage"] == 100
+    assert runtime.state.last_write_details[0]["battery_response"] == "91086419"
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+async def test_failed_diagnostic_write_does_not_update_last_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Preview should render before a write, while last content requires success."""
+    monkeypatch.setattr(
+        panda_runtime.bluetooth,
+        "async_ble_device_from_address",
+        lambda *_args, **_kwargs: None,
+    )
+    runtime, _coordinator = _runtime_data()
+
+    with pytest.raises(HomeAssistantError):
+        await panda_runtime.async_write_white_fill(FakeHass(), runtime)
+
+    assert runtime.preview_coordinator.data is not None
+    assert runtime.preview_coordinator.updates == [
+        runtime.preview_coordinator.data
+    ]
+    assert runtime.image_coordinator.data is None
+    assert runtime.image_coordinator.updates == []
 
 
 @pytest.mark.usefixtures("retry_test_setup")
