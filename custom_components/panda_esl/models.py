@@ -195,6 +195,8 @@ class PandaEslState:
     last_seen: datetime | None = None
     detection_count: int = 0
     present: bool = False
+    battery_percentage: int | None = None
+    battery_last_updated: datetime | None = None
     last_scan: datetime | None = None
     last_scan_error: str | None = None
     last_scan_result: str | None = None
@@ -282,6 +284,13 @@ class PandaEslState:
     def mark_unavailable(self) -> None:
         """Mark the device unavailable in Bluetooth cache."""
         self.present = False
+
+    def update_battery(self, percentage: int) -> None:
+        """Update the battery percentage reported during a display write."""
+        if not 0 <= percentage <= 100:
+            raise ValueError(f"Invalid battery percentage: {percentage}")
+        self.battery_percentage = percentage
+        self.battery_last_updated = datetime.now(timezone.utc)
 
     def update_scan(
         self,
@@ -372,6 +381,8 @@ class PandaEslState:
                 "write_progress_percent",
                 "write_progress_chunks_written",
                 "write_progress_chunks_total",
+                "battery_query_sent",
+                "battery_percentage",
                 "protocol_variant",
                 "trace_enabled",
                 "trace_file",

@@ -36,6 +36,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             PandaEslWriteProgressSensor(entry, runtime),
+            PandaEslBatterySensor(entry, runtime),
             PandaEslBluetoothRssiSensor(entry, runtime),
         ]
     )
@@ -122,6 +123,52 @@ class PandaEslBluetoothRssiSensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> int | None:
         """Return the latest advertised Bluetooth RSSI in dBm."""
         return self._panda_state.rssi
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return DeviceInfo(
+            connections={(CONNECTION_BLUETOOTH, self._runtime.state.address)},
+            identifiers={(DOMAIN, self._runtime.state.address)},
+            manufacturer=MANUFACTURER,
+            model=self._runtime.profile.model,
+            name=self._entry.data.get(CONF_NAME) or self._entry.title,
+        )
+
+    @property
+    def _panda_state(self) -> PandaEslState:
+        """Return the current shared state."""
+        return self._runtime.state
+
+
+class PandaEslBatterySensor(CoordinatorEntity, SensorEntity):
+    """Sensor that reports battery level queried during display writes."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "battery"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, entry: ConfigEntry, runtime: PandaEslRuntimeData) -> None:
+        """Initialize the battery sensor."""
+        super().__init__(runtime.coordinator)
+        self._entry = entry
+        self._runtime = runtime
+        safe_address = runtime.state.address.replace(":", "").lower()
+        self._attr_unique_id = f"{DOMAIN}_{safe_address}_battery"
+
+    @property
+    def available(self) -> bool:
+        """Return true after a display write has reported a battery level."""
+        return self._panda_state.battery_percentage is not None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the most recent battery percentage."""
+        return self._panda_state.battery_percentage
 
     @property
     def device_info(self) -> DeviceInfo:

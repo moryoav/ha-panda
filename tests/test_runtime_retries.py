@@ -116,10 +116,14 @@ class FakeBleClient:
         drop_once: set[tuple[int, int]] | None = None,
         always_drop: set[tuple[int, int]] | None = None,
         start_notify_error: Exception | None = None,
+        battery_percentage: int | None = None,
+        legacy_battery_response: bool = False,
     ) -> None:
         self.drop_once = drop_once or set()
         self.always_drop = always_drop or set()
         self.start_notify_error = start_notify_error
+        self.battery_percentage = battery_percentage
+        self.legacy_battery_response = legacy_battery_response
         self.notify_callback: Any | None = None
         self.writes: list[bytes] = []
         self.write_counts: dict[tuple[int, int], int] = {}
@@ -149,6 +153,35 @@ class FakeBleClient:
     ) -> None:
         """Record writes and emit matching ACK notifications."""
         self.writes.append(packet)
+        if (
+            packet == panda_runtime.PANDA_DEVICE_INFO_REQUEST
+            and self.battery_percentage is not None
+        ):
+            if self.legacy_battery_response:
+                self._emit(
+                    bytes(
+                        (0x91, 0x05, 0x03, 0x02, self.battery_percentage, 0x19)
+                    )
+                )
+            else:
+                self._emit(
+                    bytes(
+                        (
+                            0x91,
+                            0x00,
+                            0x03,
+                            0x02,
+                            0x00,
+                            0x00,
+                            0x00,
+                            0x00,
+                            0x00,
+                            0x00,
+                            self.battery_percentage,
+                            0x19,
+                        )
+                    )
+                )
         decoded = panda_runtime._decode_packet(packet)
         kind = decoded.get("kind")
         if kind == "image_chunk":
@@ -326,6 +359,24 @@ def test_target_match_does_not_cross_update_supported_tags() -> None:
 
     assert not panda_models.service_info_matches_target(other, ADDRESS)
     assert panda_models.service_info_matches_target(other, other.address)
+
+
+@pytest.mark.parametrize(
+    ("notification", "expected"),
+    [
+        (bytes.fromhex("910003020000000000006419"), 100),
+        (bytes.fromhex("910503026419"), 100),
+        (bytes.fromhex("910003020000000000006519"), None),
+        (bytes.fromhex("91060019"), None),
+        (bytes.fromhex("9100030200000000000064"), None),
+    ],
+)
+def test_battery_percentage_notification_parser(
+    notification: bytes,
+    expected: int | None,
+) -> None:
+    """Device-info responses should expose only valid battery percentages."""
+    assert panda_runtime._battery_percentage_from_notification(notification) == expected
 
 
 def test_only_etag_530_uses_active_high_black_plane() -> None:
@@ -548,9 +599,9 @@ def test_etag_534_packs_rows_left_to_right() -> None:
 @pytest.mark.parametrize(
     ("profile", "packet_count", "image_packet_count"),
     [
-        (ETAG_526_PROFILE, 230, 226),
-        (ETAG_530_PROFILE, 436, 432),
-        (ETAG_534_PROFILE, 604, 600),
+        (ETAG_526_PROFILE, 231, 226),
+        (ETAG_530_PROFILE, 437, 432),
+        (ETAG_534_PROFILE, 605, 600),
     ],
 )
 async def test_non_default_profile_full_write_completes_two_ack_cycles(
@@ -587,6 +638,68 @@ async def test_non_default_profile_full_write_completes_two_ack_cycles(
     assert attrs["ack_cycle_count"] == 2
     assert attrs["ack_final_seen"] is True
     assert runtime.state.write_progress_chunks_total == image_packet_count
+    assert runtime.state.write_progress_percent == 100.0
+    assert client.writes[0] == panda_runtime.PANDA_DEVICE_INFO_REQUEST
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+@pytest.mark.parametrize("legacy_response", [False, True])
+async def test_display_write_updates_battery_from_device_info_notification(
+    monkeypatch: pytest.MonkeyPatch,
+    legacy_response: bool,
+) -> None:
+    """A display write should query and publish the reported battery percentage."""
+    client = FakeBleClient(
+        battery_percentage=87,
+        legacy_battery_response=legacy_response,
+    )
+    _install_clients(monkeypatch, [client])
+    runtime, _coordinator = _runtime_data()
+
+    await panda_runtime._async_send_packets(
+        FakeHass(),
+        runtime,
+        packets=_packets(),
+        action_key="test",
+        result_name="write_test_ok",
+        details={},
+        write_delay_ms=0,
+        retry_count=0,
+    )
+
+    attrs = runtime.state.write_action_results["test"]
+    assert client.writes[0] == panda_runtime.PANDA_DEVICE_INFO_REQUEST
+    assert client.writes.count(panda_runtime.PANDA_DEVICE_INFO_REQUEST) == 1
+    assert runtime.state.battery_percentage == 87
+    assert runtime.state.battery_last_updated is not None
+    assert attrs["battery_query_sent"] is True
+    assert attrs["battery_percentage"] == 87
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+async def test_missing_battery_response_does_not_block_display_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tags that do not answer the optional query should still update normally."""
+    client = FakeBleClient()
+    _install_clients(monkeypatch, [client])
+    runtime, _coordinator = _runtime_data()
+
+    await panda_runtime._async_send_packets(
+        FakeHass(),
+        runtime,
+        packets=_packets(),
+        action_key="test",
+        result_name="write_test_ok",
+        details={},
+        write_delay_ms=0,
+        retry_count=0,
+    )
+
+    attrs = runtime.state.write_action_results["test"]
+    assert runtime.state.battery_percentage is None
+    assert attrs["battery_query_sent"] is True
+    assert attrs["battery_percentage"] is None
     assert runtime.state.write_progress_percent == 100.0
 
 

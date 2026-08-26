@@ -32,6 +32,7 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 - Preview and last-updated image entities
 - Preview and last-updated images restore after Home Assistant restarts
 - Write progress percentage sensor updated after each acknowledged image chunk
+- Battery percentage sensor refreshed during physical display writes
 - Bluetooth RSSI diagnostic sensor from the latest Home Assistant Bluetooth advertisement
 - Write-lock switch
 - Packet notification capture switch for BLE transfer diagnostics
@@ -110,6 +111,7 @@ Each configured label creates one Home Assistant device.
 | Last updated content | None | Yes | PNG image of the last payload successfully written to the label. |
 | Preview content | Diagnostic | Yes | PNG preview of the last rendered payload, including dry runs. |
 | Write progress | None | Yes | Percentage progress for the active or most recent BLE image write, with chunk counts as attributes. |
+| Battery | Diagnostic | Yes | Last battery percentage reported by the label during a physical display write. |
 | Bluetooth RSSI | Diagnostic | Yes | Latest advertised Bluetooth signal strength in dBm. |
 | Write lock | Configuration | Yes | Prevents `panda_esl.write_guarded` from physically writing to the label. |
 | Packet notification capture | Diagnostic | No | Writes detailed BLE packet and notification traces to `config/panda_esl_traces/`. |
@@ -215,6 +217,8 @@ PANDA ESL is a local push Bluetooth integration. Home Assistant updates runtime 
 
 The Bluetooth RSSI sensor updates from the latest advertisement Home Assistant receives for the label. It is a last-advertised signal value in dBm, not a continuously measured connection-quality percentage.
 
+Each physical display write sends the PANDA device-information request after notifications start. A valid modern or legacy reply updates the Battery sensor in percent. The query is best-effort: labels that do not reply still continue the display transfer, and dry runs or skipped guarded writes do not query the label. The sensor remains unavailable until the first battery reply and is refreshed only by later physical display writes; there is no polling or manual battery-refresh action.
+
 Writes use a connectable BLE handle at action time. If no connectable handle is available, Home Assistant raises a translated action error and records the failure in the diagnostic attributes.
 
 The Write progress sensor resets to 0% when a physical write attempt starts, advances after each acknowledged image chunk, and reaches 100% only after the final commit notification is received.
@@ -249,6 +253,7 @@ Made something cool with PANDA ESL? Post a photo or screenshot in the [PANDA ESL
 - The canvas is selected from the advertised tag ID: 256x128 for ETAG-525, 296x152 for ETAG-526, 360x240 for ETAG-530, and 400x300 for ETAG-534.
 - ETAG-530 labels use the opposite black-plane polarity from the other supported families; the integration corrects this automatically.
 - ETAG-534 labels use a row-major framebuffer while the other supported families use column-major framebuffers; the integration selects the correct layout automatically.
+- Battery percentage is queried only as part of a physical display write and remains at the last reported value between writes.
 - Yellow payload colors are rendered as red on PANDA hardware.
 - A label must be visible to Home Assistant Bluetooth before a physical write can start.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.

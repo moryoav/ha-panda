@@ -41,6 +41,7 @@ PANDA_ACK_CHUNK_TIMEOUT_S = 5.0
 PANDA_ACK_FINAL_TIMEOUT_S = 10.0
 PANDA_ACK_INTER_PACKET_DELAY_MS = 10
 PANDA_FINAL_ACK = bytes.fromhex("91040019")
+PANDA_DEVICE_INFO_REQUEST = bytes.fromhex("ac0002ca")
 
 _STANDARD_PREAMBLE: list[bytes] = [
     bytes.fromhex("ac05ca"),
@@ -78,7 +79,9 @@ def _decode_packet(packet: bytes) -> dict[str, Any]:
         "enveloped": True,
         "command": f"0x{command:02x}",
     }
-    if command == 0x01 and len(packet) >= 10:
+    if command == 0x00 and packet == PANDA_DEVICE_INFO_REQUEST:
+        decoded["kind"] = "device_info_request"
+    elif command == 0x01 and len(packet) >= 10:
         decoded.update(
             {
                 "kind": "image_chunk",
@@ -104,6 +107,22 @@ def _progress_ack_value(data: bytes) -> int | None:
     if len(data) != 6 or data[0] != 0x91 or data[1] != 0x02 or data[-1] != 0x19:
         return None
     return int.from_bytes(data[2:5], "little")
+
+
+def _battery_percentage_from_notification(data: bytes) -> int | None:
+    """Return a battery percentage from a PANDA device-info notification."""
+    if len(data) < 3 or data[0] != 0x91 or data[-1] != 0x19:
+        return None
+
+    percentage: int | None = None
+    if data[1] == 0x00 and len(data) >= 12:
+        percentage = data[10]
+    elif data[1] == 0x05 and len(data) >= 6:
+        percentage = data[4]
+
+    if percentage is None or not 0 <= percentage <= 100:
+        return None
+    return percentage
 
 
 def _image_chunk_packet_count(packets: list[bytes]) -> int:
@@ -555,6 +574,7 @@ async def _async_send_packets_attempt(
 ) -> None:
     """Send packets using PANDA notification ACK-gated flow control."""
     address = runtime.state.address
+    wire_packets = [PANDA_DEVICE_INFO_REQUEST, *packets]
     image_packet_total = _image_chunk_packet_count(packets)
     runtime.state.update_write_progress(
         0.0,
@@ -588,12 +608,15 @@ async def _async_send_packets_attempt(
     image_packets_confirmed = 0
     bytes_written = 0
     chunk_retry_count = 0
+    battery_percentage: int | None = None
+    battery_response: bytes | None = None
     client: BleakClient | None = None
     try:
         client = await establish_connection(BleakClient, ble_device, address)
         loop = asyncio.get_running_loop()
 
         def _record_notification(sender: str, data: bytes) -> None:
+            nonlocal battery_percentage, battery_response
             nonlocal final_ack_seen, last_progress_value
             notification = {
                 "id": len(trace_notifications),
@@ -608,6 +631,14 @@ async def _async_send_packets_attempt(
             notifications.append(notification["data_hex"])
             if current_packet_event is not None:
                 current_packet_event["notifications"].append(notification)
+
+            reported_battery = _battery_percentage_from_notification(data)
+            if reported_battery is not None:
+                battery_percentage = reported_battery
+                battery_response = data
+                notification["battery_percentage"] = reported_battery
+                runtime.state.update_battery(reported_battery)
+                runtime.coordinator.async_set_updated_data(runtime.state)
 
             progress_value = _progress_ack_value(data)
             if progress_value is not None:
@@ -701,9 +732,9 @@ async def _async_send_packets_attempt(
                 "max_write_without_response_size": getattr(char, "max_write_without_response_size", None),
             }
 
-        preamble_len = len(_STANDARD_PREAMBLE)
+        preamble_len = len(_STANDARD_PREAMBLE) + 1
         image_ack_cycle = -1
-        for packet_index, packet in enumerate(packets):
+        for packet_index, packet in enumerate(wire_packets):
             decoded_packet = _decode_packet(packet)
             expected_ack_cycle: int | None = None
             is_image_chunk = decoded_packet.get("kind") == "image_chunk"
@@ -715,9 +746,11 @@ async def _async_send_packets_attempt(
                 final_ack_seen = False
 
             if capture_trace:
-                if packet_index < preamble_len:
+                if decoded_packet.get("kind") == "device_info_request":
+                    stage = "device_info"
+                elif packet_index < preamble_len:
                     stage = "preamble"
-                elif packet_index == len(packets) - 1:
+                elif packet_index == len(wire_packets) - 1:
                     stage = "final"
                 else:
                     stage = "image"
@@ -739,7 +772,7 @@ async def _async_send_packets_attempt(
                 current_packet_event["relative_write_return_ms"] = round(
                     (time.monotonic() - trace_started_monotonic) * 1000, 3
                 )
-            if preamble_len <= packet_index < len(packets) - 1:
+            if preamble_len <= packet_index < len(wire_packets) - 1:
                 image_packets_written += 1
 
             if is_image_chunk:
@@ -831,7 +864,7 @@ async def _async_send_packets_attempt(
             "chunk_payload_size": PANDA_CHUNK_PAYLOAD_SIZE,
             "write_delay_ms": write_delay_ms,
             "preamble": "standard",
-            "packet_count": len(packets),
+            "packet_count": len(wire_packets),
             "image_packets_written": image_packets_written,
             "image_packets_confirmed": image_packets_confirmed,
             "bytes_written": bytes_written,
@@ -849,6 +882,11 @@ async def _async_send_packets_attempt(
             "write_progress_percent": runtime.state.write_progress_percent,
             "write_progress_chunks_written": runtime.state.write_progress_chunks_written,
             "write_progress_chunks_total": runtime.state.write_progress_chunks_total,
+            "battery_query_sent": True,
+            "battery_percentage": battery_percentage,
+            "battery_response": (
+                battery_response.hex() if battery_response is not None else None
+            ),
             "characteristic": PANDA_FFE1_CHAR_UUID,
             "characteristic_info": characteristic_info,
             "protocol_variant": "v19_ack_gated",
@@ -865,7 +903,7 @@ async def _async_send_packets_attempt(
                 "characteristic": PANDA_FFE1_CHAR_UUID,
                 "characteristic_info": characteristic_info,
                 "write_delay_ms": write_delay_ms,
-                "packet_count": len(packets),
+                "packet_count": len(wire_packets),
                 "image_packets_written": image_packets_written,
                 "image_packets_confirmed": image_packets_confirmed,
                 "bytes_written": bytes_written,
@@ -875,6 +913,11 @@ async def _async_send_packets_attempt(
                 "max_attempts": max_attempts,
                 "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
                 "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+                "battery_query_sent": True,
+                "battery_percentage": battery_percentage,
+                "battery_response": (
+                    battery_response.hex() if battery_response is not None else None
+                ),
                 "protocol_variant": "v19_ack_gated",
             }
             try:
@@ -946,7 +989,7 @@ async def _async_send_packets_attempt(
                 **_profile_details(runtime.profile),
                 "characteristic": PANDA_FFE1_CHAR_UUID,
                 "write_delay_ms": write_delay_ms,
-                "packet_count": len(packets),
+                "packet_count": len(wire_packets),
                 "image_packets_written": image_packets_written,
                 "image_packets_confirmed": image_packets_confirmed,
                 "bytes_written": bytes_written,
@@ -956,6 +999,11 @@ async def _async_send_packets_attempt(
                 "max_attempts": max_attempts,
                 "ack_chunk_timeout_s": PANDA_ACK_CHUNK_TIMEOUT_S,
                 "ack_final_timeout_s": PANDA_ACK_FINAL_TIMEOUT_S,
+                "battery_query_sent": True,
+                "battery_percentage": battery_percentage,
+                "battery_response": (
+                    battery_response.hex() if battery_response is not None else None
+                ),
                 "protocol_variant": "v19_ack_gated",
             }
             error_details.update(

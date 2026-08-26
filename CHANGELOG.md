@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.20 - 2026-08-26
+
+- Add a battery percentage diagnostic sensor that requests device information during physical display writes.
+- Accept modern and legacy PANDA battery notifications without blocking display updates when a tag does not answer.
+
 ## 0.1.19 - 2026-08-26
 
 - Correct the 4.2-inch `ETAG-534` framebuffer layout to 300 row-major 400-pixel rows, preventing framed and rendered images from appearing as four repeated columns.
