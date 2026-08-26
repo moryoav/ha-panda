@@ -17,6 +17,7 @@ class PandaEslDeviceProfile:
     screen_size_inches: str
     width: int
     height: int
+    black_plane_active_high: bool = False
 
     @property
     def plane_byte_count(self) -> int:
@@ -52,6 +53,7 @@ ETAG_530_PROFILE = PandaEslDeviceProfile(
     screen_size_inches="3.5",
     width=360,
     height=240,
+    black_plane_active_high=True,
 )
 
 ETAG_534_PROFILE = PandaEslDeviceProfile(

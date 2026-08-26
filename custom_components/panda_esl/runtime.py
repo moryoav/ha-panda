@@ -239,7 +239,19 @@ def _profile_details(profile: PandaEslDeviceProfile) -> dict[str, Any]:
         "canvas_width": profile.width,
         "canvas_height": profile.height,
         "plane_byte_count": profile.plane_byte_count,
+        "black_plane_active_high": profile.black_plane_active_high,
     }
+
+
+def _apply_profile_plane_polarity(
+    profile: PandaEslDeviceProfile,
+    plane0: bytes,
+    plane1: bytes,
+) -> tuple[bytes, bytes]:
+    """Apply profile-specific color-plane polarity to canonical plane data."""
+    if profile.black_plane_active_high:
+        plane0 = bytes(value ^ 0xFF for value in plane0)
+    return plane0, plane1
 
 
 def _build_fill_packets(
@@ -255,12 +267,15 @@ def _build_fill_packets(
     if color not in plane_values:
         raise ValueError(f"Unknown fill color: {color}")
 
+    plane0_value, plane1_value = plane_values[color]
+    plane0, plane1 = _apply_profile_plane_polarity(
+        profile,
+        bytes([plane0_value]) * profile.plane_byte_count,
+        bytes([plane1_value]) * profile.plane_byte_count,
+    )
     packets: list[bytes] = list(_STANDARD_PREAMBLE)
-    for plane, value in enumerate(plane_values[color]):
-        packets += _frame_image_chunks(
-            plane,
-            bytes([value]) * profile.plane_byte_count,
-        )
+    for plane, payload in enumerate((plane0, plane1)):
+        packets += _frame_image_chunks(plane, payload)
     packets.append(bytes.fromhex("ac03ca"))
     return packets
 
@@ -300,7 +315,7 @@ def _draw_text_5x7(
 
 
 def _encode_pixels_plane01(pixels: list[list[int]]) -> tuple[bytes, bytes]:
-    """Encode pixels for plane 0 black active-low and plane 1 red active-high.
+    """Encode pixels canonically as black active-low and red active-high.
 
     Pixel values: 0=white, 1=black, 2=red.
     Packing order: columns left-to-right, rows bottom-to-top, MSB first.
@@ -399,6 +414,7 @@ def _build_framed_packets(
     profile: PandaEslDeviceProfile,
 ) -> list[bytes]:
     plane0, plane1 = _encode_pixels_plane01(_build_framed_pixels(profile))
+    plane0, plane1 = _apply_profile_plane_polarity(profile, plane0, plane1)
     if (
         len(plane0) != profile.plane_byte_count
         or len(plane1) != profile.plane_byte_count
@@ -480,6 +496,7 @@ def build_packets_from_rendered_image(
         display_pixels[profile.height - 1 - y][:] for y in range(profile.height)
     ]
     plane0, plane1 = _encode_pixels_plane01(memory_pixels)
+    plane0, plane1 = _apply_profile_plane_polarity(profile, plane0, plane1)
     if (
         len(plane0) != profile.plane_byte_count
         or len(plane1) != profile.plane_byte_count

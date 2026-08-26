@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.18 - 2026-08-26
+
+- Correct the inverted black-plane polarity on 3.5-inch `ETAG-530` labels so white, black, red, rendered service images, and diagnostic frames use the intended colors.
+
 ## 0.1.17 - 2026-08-25
 
 - Add support for 3.5-inch 360x240 `ETAG-530` and 4.2-inch 400x300 `ETAG-534` labels.

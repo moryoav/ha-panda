@@ -328,6 +328,15 @@ def test_target_match_does_not_cross_update_supported_tags() -> None:
     assert panda_models.service_info_matches_target(other, other.address)
 
 
+def test_only_etag_530_uses_active_high_black_plane() -> None:
+    """The ETAG-530 hardware inverts the black plane relative to other tags."""
+    assert ETAG_530_PROFILE.black_plane_active_high is True
+    assert all(
+        profile.black_plane_active_high is False
+        for profile in (ETAG_525_PROFILE, ETAG_526_PROFILE, ETAG_534_PROFILE)
+    )
+
+
 @pytest.mark.parametrize(
     ("profile", "plane_bytes", "chunks_per_plane", "packet_count", "tail_bytes"),
     [
@@ -371,6 +380,8 @@ def test_fill_packet_geometry(
     ]
     assert image_planes == [0] * chunks_per_plane + [1] * chunks_per_plane
     for plane, expected_byte in enumerate(expected_plane_bytes):
+        if plane == 0 and profile.black_plane_active_high:
+            expected_byte = bytes([expected_byte[0] ^ 0xFF])
         chunks = _image_chunks(packets, plane)
         decoded = [panda_runtime._decode_packet(packet) for packet in chunks]
         payload = b"".join(packet[9:-1] for packet in chunks)
@@ -388,6 +399,28 @@ def test_fill_packet_builder_rejects_unknown_color() -> None:
     """Unknown fill names should fail instead of sending an ambiguous image."""
     with pytest.raises(ValueError, match="Unknown fill color"):
         panda_runtime._build_fill_packets("blue", ETAG_525_PROFILE)
+
+
+@pytest.mark.parametrize(
+    ("color", "expected_plane_bytes"),
+    [
+        ("white", (b"\x00", b"\x00")),
+        ("black", (b"\xff", b"\x00")),
+        ("red", (b"\x00", b"\xff")),
+    ],
+)
+def test_etag_530_fill_corrects_black_plane_polarity(
+    color: str,
+    expected_plane_bytes: tuple[bytes, bytes],
+) -> None:
+    """ETAG-530 fills should use active-high black-plane payloads."""
+    packets = panda_runtime._build_fill_packets(color, ETAG_530_PROFILE)
+
+    for plane, expected_byte in enumerate(expected_plane_bytes):
+        payload = b"".join(
+            packet[9:-1] for packet in _image_chunks(packets, plane)
+        )
+        assert payload == expected_byte * ETAG_530_PROFILE.plane_byte_count
 
 
 @pytest.mark.parametrize(
@@ -425,11 +458,59 @@ def test_rendered_image_uses_profile_canvas_and_planes(
     assert details["canvas_width"] == width
     assert details["canvas_height"] == height
     assert details["plane_byte_count"] == plane_bytes
+    assert details["black_plane_active_high"] is profile.black_plane_active_high
     assert details["pixel_counts"] == {
         "white": width * height,
         "black": 0,
         "red": 0,
     }
+
+
+@pytest.mark.parametrize(
+    ("color", "expected_rgb", "expected_plane_bytes"),
+    [
+        ("white", (255, 255, 255), (b"\x00", b"\x00")),
+        ("black", (0, 0, 0), (b"\xff", b"\x00")),
+        ("red", (255, 0, 0), (b"\x00", b"\xff")),
+    ],
+)
+def test_etag_530_rendered_images_correct_black_plane_polarity(
+    color: str,
+    expected_rgb: tuple[int, int, int],
+    expected_plane_bytes: tuple[bytes, bytes],
+) -> None:
+    """Rendered ETAG-530 colors should be encoded with corrected polarity."""
+    source = Image.new("RGB", (1, 1), color)
+
+    packets, preview_png, _details = panda_runtime.build_packets_from_rendered_image(
+        source,
+        profile=ETAG_530_PROFILE,
+    )
+
+    with Image.open(BytesIO(preview_png)) as preview:
+        assert preview.getpixel((0, 0)) == expected_rgb
+    for plane, expected_byte in enumerate(expected_plane_bytes):
+        payload = b"".join(
+            packet[9:-1] for packet in _image_chunks(packets, plane)
+        )
+        assert payload == expected_byte * ETAG_530_PROFILE.plane_byte_count
+
+
+def test_etag_530_framed_image_corrects_black_plane_polarity() -> None:
+    """The diagnostic frame should apply ETAG-530 black-plane polarity."""
+    canonical_plane0, canonical_plane1 = panda_runtime._encode_pixels_plane01(
+        panda_runtime._build_framed_pixels(ETAG_530_PROFILE)
+    )
+    packets = panda_runtime._build_framed_packets(ETAG_530_PROFILE)
+
+    encoded_plane0 = b"".join(
+        packet[9:-1] for packet in _image_chunks(packets, 0)
+    )
+    encoded_plane1 = b"".join(
+        packet[9:-1] for packet in _image_chunks(packets, 1)
+    )
+    assert encoded_plane0 == bytes(value ^ 0xFF for value in canonical_plane0)
+    assert encoded_plane1 == canonical_plane1
 
 
 @pytest.mark.usefixtures("retry_test_setup")

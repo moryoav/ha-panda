@@ -350,6 +350,7 @@ class PandaEslState:
                 "canvas_width",
                 "canvas_height",
                 "plane_byte_count",
+                "black_plane_active_high",
                 "chunk_payload_size",
                 "write_delay_ms",
                 "preamble",

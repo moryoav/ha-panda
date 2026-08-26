@@ -247,6 +247,7 @@ Made something cool with PANDA ESL? Post a photo or screenshot in the [PANDA ESL
 - PANDA image chunks are ACK-gated using device progress notifications. A timed-out chunk aborts the current connection and uses the configured full write retry.
 - The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
 - The canvas is selected from the advertised tag ID: 256x128 for ETAG-525, 296x152 for ETAG-526, 360x240 for ETAG-530, and 400x300 for ETAG-534.
+- ETAG-530 labels use the opposite black-plane polarity from the other supported families; the integration corrects this automatically.
 - Yellow payload colors are rendered as red on PANDA hardware.
 - A label must be visible to Home Assistant Bluetooth before a physical write can start.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.

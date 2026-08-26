@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.17"
+    assert manifest["version"] == "0.1.18"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
     assert {
@@ -172,7 +172,7 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.17 - 2026-08-25" in changelog
+    assert "## 0.1.18 - 2026-08-26" in changelog
     assert "@chrisrock1984" in changelog
     assert "## 0.1.14 - 2026-08-02" in changelog
     assert "@ruffoa" in changelog
@@ -191,6 +191,7 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     assert "296x152" in readme
     assert "360x240" in readme
     assert "400x300" in readme
+    assert "opposite black-plane polarity" in readme
     assert "Known Limitations" in readme
     assert "config/panda_esl/fonts/" in readme
     assert "optional_fonts" in readme
