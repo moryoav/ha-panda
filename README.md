@@ -43,12 +43,12 @@ The PANDA display supports white, black, and red output. The service syntax acce
 
 Supported advertised PANDA / ETAG device families:
 
-| Advertised tag ID | Size | Resolution |
-| --- | --- | --- |
-| `ETAG-525...` | 2.13 inch | 256x128 |
-| `ETAG-526...` | 2.66 inch | 296x152 |
-| `ETAG-530...` | 3.5 inch | 360x240 |
-| `ETAG-534...` | 4.2 inch | 400x300 |
+| Advertised tag ID | Size | Resolution | Framebuffer layout |
+| --- | --- | --- | --- |
+| `ETAG-525...` | 2.13 inch | 256x128 | Column-major |
+| `ETAG-526...` | 2.66 inch | 296x152 | Column-major |
+| `ETAG-530...` | 3.5 inch | 360x240 | Column-major |
+| `ETAG-534...` | 4.2 inch | 400x300 | Row-major |
 
 Confirmed working product: [PANDA / ETAG BLE electronic shelf label](https://s.click.aliexpress.com/e/_c4Kgtn93)
 
@@ -248,6 +248,7 @@ Made something cool with PANDA ESL? Post a photo or screenshot in the [PANDA ESL
 - The default write delay is 150 ms for preamble packets; image chunks advance after ACK progress.
 - The canvas is selected from the advertised tag ID: 256x128 for ETAG-525, 296x152 for ETAG-526, 360x240 for ETAG-530, and 400x300 for ETAG-534.
 - ETAG-530 labels use the opposite black-plane polarity from the other supported families; the integration corrects this automatically.
+- ETAG-534 labels use a row-major framebuffer while the other supported families use column-major framebuffers; the integration selects the correct layout automatically.
 - Yellow payload colors are rendered as red on PANDA hardware.
 - A label must be visible to Home Assistant Bluetooth before a physical write can start.
 - `plot` elements require Home Assistant Recorder history for the referenced entities.

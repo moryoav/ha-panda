@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import BytesIO
@@ -240,6 +241,7 @@ def _profile_details(profile: PandaEslDeviceProfile) -> dict[str, Any]:
         "canvas_height": profile.height,
         "plane_byte_count": profile.plane_byte_count,
         "black_plane_active_high": profile.black_plane_active_high,
+        "framebuffer_layout": "row_major" if profile.row_major else "column_major",
     }
 
 
@@ -314,23 +316,36 @@ def _draw_text_5x7(
         x += 6 * scale
 
 
-def _encode_pixels_plane01(pixels: list[list[int]]) -> tuple[bytes, bytes]:
+def _encode_pixels_plane01(
+    pixels: list[list[int]],
+    *,
+    row_major: bool = False,
+) -> tuple[bytes, bytes]:
     """Encode pixels canonically as black active-low and red active-high.
 
     Pixel values: 0=white, 1=black, 2=red.
-    Packing order: columns left-to-right, rows bottom-to-top, MSB first.
+    Packing is MSB first. Column-major profiles scan columns left-to-right and
+    rows bottom-to-top. Row-major profiles scan rows bottom-to-top and columns
+    left-to-right. Each row or column is padded to a whole byte.
     """
     height = len(pixels)
     width = len(pixels[0]) if pixels else 0
     plane0 = bytearray()
     plane1 = bytearray()
 
-    for x in range(width):
+    def scanlines() -> Iterator[Iterator[int]]:
+        if row_major:
+            for y in range(height - 1, -1, -1):
+                yield (pixels[y][x] for x in range(width))
+            return
+        for x in range(width):
+            yield (pixels[y][x] for y in range(height - 1, -1, -1))
+
+    for colors in scanlines():
         bit_index = 0
         b0 = 0xFF
         b1 = 0x00
-        for y in range(height - 1, -1, -1):
-            color = pixels[y][x]
+        for color in colors:
             mask = 1 << (7 - bit_index)
             if color == 1:  # black
                 b0 &= (~mask) & 0xFF
@@ -413,7 +428,10 @@ def _build_framed_pixels(
 def _build_framed_packets(
     profile: PandaEslDeviceProfile,
 ) -> list[bytes]:
-    plane0, plane1 = _encode_pixels_plane01(_build_framed_pixels(profile))
+    plane0, plane1 = _encode_pixels_plane01(
+        _build_framed_pixels(profile),
+        row_major=profile.row_major,
+    )
     plane0, plane1 = _apply_profile_plane_polarity(profile, plane0, plane1)
     if (
         len(plane0) != profile.plane_byte_count
@@ -495,7 +513,10 @@ def build_packets_from_rendered_image(
     memory_pixels = [
         display_pixels[profile.height - 1 - y][:] for y in range(profile.height)
     ]
-    plane0, plane1 = _encode_pixels_plane01(memory_pixels)
+    plane0, plane1 = _encode_pixels_plane01(
+        memory_pixels,
+        row_major=profile.row_major,
+    )
     plane0, plane1 = _apply_profile_plane_polarity(profile, plane0, plane1)
     if (
         len(plane0) != profile.plane_byte_count

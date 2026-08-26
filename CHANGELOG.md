@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.19 - 2026-08-26
+
+- Correct the 4.2-inch `ETAG-534` framebuffer layout to 300 row-major 400-pixel rows, preventing framed and rendered images from appearing as four repeated columns.
+
 ## 0.1.18 - 2026-08-26
 
 - Correct the inverted black-plane polarity on 3.5-inch `ETAG-530` labels so white, black, red, rendered service images, and diagnostic frames use the intended colors.

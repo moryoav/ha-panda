@@ -18,10 +18,13 @@ class PandaEslDeviceProfile:
     width: int
     height: int
     black_plane_active_high: bool = False
+    row_major: bool = False
 
     @property
     def plane_byte_count(self) -> int:
-        """Return bytes required for one column-major display plane."""
+        """Return bytes required for one display plane."""
+        if self.row_major:
+            return self.height * ((self.width + 7) // 8)
         return self.width * ((self.height + 7) // 8)
 
 
@@ -64,6 +67,7 @@ ETAG_534_PROFILE = PandaEslDeviceProfile(
     screen_size_inches="4.2",
     width=400,
     height=300,
+    row_major=True,
 )
 
 DEFAULT_DEVICE_PROFILE = ETAG_525_PROFILE

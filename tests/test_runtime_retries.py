@@ -337,13 +337,22 @@ def test_only_etag_530_uses_active_high_black_plane() -> None:
     )
 
 
+def test_only_etag_534_uses_row_major_framebuffer() -> None:
+    """The ETAG-534 controller consumes complete rows instead of columns."""
+    assert ETAG_534_PROFILE.row_major is True
+    assert all(
+        profile.row_major is False
+        for profile in (ETAG_525_PROFILE, ETAG_526_PROFILE, ETAG_530_PROFILE)
+    )
+
+
 @pytest.mark.parametrize(
     ("profile", "plane_bytes", "chunks_per_plane", "packet_count", "tail_bytes"),
     [
         (ETAG_525_PROFILE, 4096, 82, 168, 46),
         (ETAG_526_PROFILE, 5624, 113, 230, 24),
         (ETAG_530_PROFILE, 10800, 216, 436, 50),
-        (ETAG_534_PROFILE, 15200, 304, 612, 50),
+        (ETAG_534_PROFILE, 15000, 300, 604, 50),
     ],
 )
 @pytest.mark.parametrize(
@@ -428,7 +437,7 @@ def test_etag_530_fill_corrects_black_plane_polarity(
     [
         (ETAG_526_PROFILE, 296, 152, 113, 5624),
         (ETAG_530_PROFILE, 360, 240, 216, 10800),
-        (ETAG_534_PROFILE, 400, 300, 304, 15200),
+        (ETAG_534_PROFILE, 400, 300, 300, 15000),
     ],
 )
 def test_rendered_image_uses_profile_canvas_and_planes(
@@ -459,6 +468,9 @@ def test_rendered_image_uses_profile_canvas_and_planes(
     assert details["canvas_height"] == height
     assert details["plane_byte_count"] == plane_bytes
     assert details["black_plane_active_high"] is profile.black_plane_active_high
+    assert details["framebuffer_layout"] == (
+        "row_major" if profile.row_major else "column_major"
+    )
     assert details["pixel_counts"] == {
         "white": width * height,
         "black": 0,
@@ -513,13 +525,32 @@ def test_etag_530_framed_image_corrects_black_plane_polarity() -> None:
     assert encoded_plane1 == canonical_plane1
 
 
+def test_etag_534_packs_rows_left_to_right() -> None:
+    """The ETAG-534 framebuffer consists of 300 rows of 50 bytes each."""
+    pixels = [
+        [0, 1, 2, 0, 1, 2, 0, 1],
+        [1, 0, 2, 1, 0, 2, 1, 0],
+    ]
+
+    column_plane0, column_plane1 = panda_runtime._encode_pixels_plane01(pixels)
+    row_plane0, row_plane1 = panda_runtime._encode_pixels_plane01(
+        pixels,
+        row_major=ETAG_534_PROFILE.row_major,
+    )
+
+    assert len(column_plane0) == len(column_plane1) == 8
+    assert (row_plane0, row_plane1) == (b"\x6d\xb6", b"\x24\x24")
+    assert ETAG_534_PROFILE.plane_byte_count == 15000
+    assert ETAG_534_PROFILE.row_major is True
+
+
 @pytest.mark.usefixtures("retry_test_setup")
 @pytest.mark.parametrize(
     ("profile", "packet_count", "image_packet_count"),
     [
         (ETAG_526_PROFILE, 230, 226),
         (ETAG_530_PROFILE, 436, 432),
-        (ETAG_534_PROFILE, 612, 608),
+        (ETAG_534_PROFILE, 604, 600),
     ],
 )
 async def test_non_default_profile_full_write_completes_two_ack_cycles(
@@ -547,6 +578,9 @@ async def test_non_default_profile_full_write_completes_two_ack_cycles(
     attrs = runtime.state.write_action_results["white_fill"]
     assert len(client.writes) == packet_count
     assert attrs["device_profile"] == profile.key
+    assert attrs["framebuffer_layout"] == (
+        "row_major" if profile.row_major else "column_major"
+    )
     assert attrs["image_packets_written"] == image_packet_count
     assert attrs["image_packets_confirmed"] == image_packet_count
     assert attrs["ack_progress_count"] == image_packet_count
