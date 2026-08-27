@@ -6,6 +6,10 @@
 [![Local Push][iot-badge]][iot-url]
 [![License: MIT][license-badge]][license-url]
 
+## Support me on Ko-fi
+
+If this project is useful to you, you can support its continued development:
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y5B124NZ2L)
 
 [hacs-badge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square
