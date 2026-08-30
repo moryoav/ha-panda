@@ -132,6 +132,9 @@ Each configured label creates one Home Assistant device.
 
 The actions intentionally mirror the Gicisky payload syntax, but use PANDA's BLE packet format when writing the rendered pixels.
 
+> [!IMPORTANT]
+> Always quote the exact `y` key for text elements, for example `"y": 10`. Home Assistant's UI YAML editor uses YAML 1.1, where an unquoted `y` is parsed as the Boolean value `true`. If `y` is not quoted, PANDA ESL does not receive a vertical coordinate and uses automatic vertical placement instead. Longer keys such as `y_start` and `y_end` are not affected.
+
 ```yaml
 action: panda_esl.write
 target:
@@ -142,7 +145,7 @@ data:
     - type: text
       value: Hello PANDA
       x: 10
-      y: 10
+      "y": 10
       size: 32
       color: black
     - type: rectangle
@@ -167,7 +170,7 @@ data:
     - type: text
       value: Immediate guarded write
       x: 10
-      y: 10
+      "y": 10
       size: 24
 ```
 
