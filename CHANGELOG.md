@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.23 - 2026-09-14
+
+- Fix the missing Rotate switch icon by replacing the invalid `mdi:rotate-180` name with `mdi:rotate-right`.
+
 ## 0.1.22 - 2026-09-14
 
 - Add a per-device Rotate configuration switch for labels mounted upside down.

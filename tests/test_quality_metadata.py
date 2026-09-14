@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.22"
+    assert manifest["version"] == "0.1.23"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
     assert {
@@ -159,14 +159,16 @@ def test_services_target_panda_esl_devices() -> None:
 
 
 def test_icon_translations_cover_all_translated_entities() -> None:
-    """Every translated entity key should have icon metadata."""
+    """Every translated entity key should use an existing Material Design Icon."""
     strings = _json(INTEGRATION / "strings.json")
     icons = _json(INTEGRATION / "icons.json")
+    mdi_icons = _json(INTEGRATION / "fonts" / "materialdesignicons-webfont_meta.json")
 
     for platform, entities in strings["entity"].items():
         assert set(icons["entity"][platform]) == set(entities)
         for icon_meta in icons["entity"][platform].values():
             assert icon_meta["default"].startswith("mdi:")
+            assert icon_meta["default"].removeprefix("mdi:") in mdi_icons
 
 
 def test_documentation_and_changelog_reference_current_version() -> None:
@@ -174,7 +176,7 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.22 - 2026-09-14" in changelog
+    assert "## 0.1.23 - 2026-09-14" in changelog
     assert "91 08 <percent> 19" in changelog
     assert "Diagnostic fill and framed-image buttons update Preview content" in readme
     assert "battery percentage diagnostic sensor" in changelog

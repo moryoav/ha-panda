@@ -41,7 +41,7 @@
         "default": "mdi:file-document-outline"
       },
       "rotate": {
-        "default": "mdi:rotate-180"
+        "default": "mdi:rotate-right"
       }
     }
   }
