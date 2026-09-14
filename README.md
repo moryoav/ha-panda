@@ -43,6 +43,7 @@ This integration was built from the reverse-engineered PANDA write protocol in t
 - Battery percentage sensor refreshed during physical display writes
 - Bluetooth RSSI diagnostic sensor from the latest Home Assistant Bluetooth advertisement
 - Write-lock switch
+- Per-device Rotate switch with immediate display refresh for upside-down mounting
 - Packet notification capture switch for BLE transfer diagnostics
 - Minimal bundled Noto Sans KR fonts, custom font directories, and Material Design Icons support
 
@@ -122,11 +123,22 @@ Each configured label creates one Home Assistant device.
 | Battery | Diagnostic | Yes | Last battery percentage reported by the label during a physical display write. |
 | Bluetooth RSSI | Diagnostic | Yes | Latest advertised Bluetooth signal strength in dBm. |
 | Write lock | Configuration | Yes | Prevents `panda_esl.write_guarded` from physically writing to the label. |
+| Rotate | Configuration | Yes | Rotates all display content by 180 degrees for upside-down mounting and immediately refreshes the last successfully sent image. |
 | Packet notification capture | Diagnostic | No | Writes detailed BLE packet and notification traces to `config/panda_esl_traces/`. |
 | Send white fill | Diagnostic | No | Sends a known-good full white diagnostic image. |
 | Send black fill | Diagnostic | No | Sends a known-good full black diagnostic image. |
 | Send red fill | Diagnostic | No | Sends a known-good full red diagnostic image. |
 | Send framed image | Diagnostic | No | Sends a framed diagnostic image for orientation and border checks. |
+
+### Upside-down mounting
+
+Turn on **Rotate** in the device's Configuration section when mounting a label upside down. Turn it off for normal orientation. The setting is independent for each label and survives Home Assistant restarts.
+
+Changing Rotate immediately resends the last successfully sent image in the new orientation. Allow the normal Bluetooth transfer and e-paper refresh time. If a write is already in progress, rotation waits for it to finish. With no saved image, the setting applies to the first write instead.
+
+Rotate applies an additional 180 degrees after the action's `rotate` value, including for images, text, and diagnostic buttons. Existing layouts and automations do not need changes. Preview content and Last updated content show the resulting transmitted orientation. Queued writes use the current setting when they are sent.
+
+Turn off **Write lock** before changing Rotate when there is a saved image. If the refresh fails, Home Assistant reports the error and keeps the previous Rotate setting and Last updated content. Try toggling again after restoring Bluetooth connectivity.
 
 ## Actions
 

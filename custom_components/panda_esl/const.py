@@ -21,6 +21,7 @@ DEFAULT_PREVENT_DUPLICATE_SEND = False
 DEFAULT_DEBOUNCE_MS = 0
 
 WRITE_LOCK = "write_lock"
+ROTATE = "rotate"
 PACKET_NOTIFICATION_CAPTURE = "packet_notification_capture"
 TRACE_DIRECTORY = "panda_esl_traces"
 

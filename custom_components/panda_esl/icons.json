@@ -39,6 +39,9 @@
       },
       "packet_notification_capture": {
         "default": "mdi:file-document-outline"
+      },
+      "rotate": {
+        "default": "mdi:rotate-180"
       }
     }
   }

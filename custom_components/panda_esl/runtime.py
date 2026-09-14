@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from io import BytesIO
 import json
@@ -18,12 +18,23 @@ from bleak_retry_connector import establish_connection
 
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from PIL import Image
 
-from .const import DEFAULT_RETRY_COUNT, DOMAIN, MAX_RETRY_COUNT, TRACE_DIRECTORY
+from .const import (
+    CONF_RETRY_COUNT,
+    CONF_WRITE_DELAY_MS,
+    DEFAULT_RETRY_COUNT,
+    DEFAULT_WRITE_DELAY_MS,
+    DOMAIN,
+    MAX_RETRY_COUNT,
+    ROTATE,
+    TRACE_DIRECTORY,
+    WRITE_LOCK,
+)
 from .models import PandaEslState
 from .profiles import DEFAULT_DEVICE_PROFILE, PandaEslDeviceProfile
 
@@ -61,6 +72,57 @@ class PandaEslRuntimeData:
     profile: PandaEslDeviceProfile
     packet_notification_capture: bool = False
     availability_logged: bool = False
+    rotate: bool = False
+    image_write_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+
+def rotate_image_packets(
+    image_data: bytes, profile: PandaEslDeviceProfile
+) -> tuple[list[bytes], bytes, dict[str, Any]]:
+    """Rotate an already quantized display image without changing its colors."""
+    with Image.open(BytesIO(image_data)) as image:
+        return build_packets_from_rendered_image(
+            image.transpose(Image.Transpose.ROTATE_180), profile=profile
+        )
+
+
+async def async_set_rotation(
+    hass: HomeAssistant, entry: ConfigEntry, rotate: bool
+) -> None:
+    """Refresh the last successful image and persist orientation after success."""
+    runtime: PandaEslRuntimeData = entry.runtime_data
+    async with runtime.image_write_lock:
+        if runtime.rotate == rotate:
+            return
+        image_data = runtime.image_coordinator.data
+        store = hass.data[DOMAIN][entry.entry_id]
+        if image_data is not None:
+            if store.get(WRITE_LOCK, False):
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="rotation_write_locked",
+                )
+            packets, rotated_data, details = await hass.async_add_executor_job(
+                rotate_image_packets, image_data, runtime.profile
+            )
+            runtime.preview_coordinator.async_set_updated_data(rotated_data)
+            options = {**entry.data, **entry.options}
+            await async_write_rendered_packets(
+                hass,
+                runtime,
+                packets=packets,
+                action_key=ROTATE,
+                result_name="write_rotate_ok",
+                details={**details, ROTATE: rotate},
+                write_delay_ms=int(
+                    options.get(CONF_WRITE_DELAY_MS, DEFAULT_WRITE_DELAY_MS)
+                ),
+                retry_count=int(options.get(CONF_RETRY_COUNT, DEFAULT_RETRY_COUNT)),
+            )
+            runtime.image_coordinator.async_set_updated_data(rotated_data)
+            store["last_image_data"] = rotated_data
+        runtime.rotate = rotate
+        hass.config_entries.async_update_entry(entry, data={**entry.data, ROTATE: rotate})
 
 
 def _safe_filename_part(value: str) -> str:
@@ -526,6 +588,7 @@ def build_packets_from_rendered_image(
     profile: PandaEslDeviceProfile,
     threshold: int = 128,
     red_threshold: int = 128,
+    rotate: bool = False,
 ) -> tuple[list[bytes], bytes, dict[str, Any]]:
     """Build PANDA packets from a rendered RGB image.
 
@@ -536,6 +599,8 @@ def build_packets_from_rendered_image(
     if image.size != (profile.width, profile.height):
         image = image.resize((profile.width, profile.height), Image.LANCZOS)
 
+    if rotate:
+        image = image.transpose(Image.Transpose.ROTATE_180)
     rgb_image = image.convert("RGB")
     display_pixels: list[list[int]] = []
     counts = {"white": 0, "black": 0, "red": 0}
@@ -1173,16 +1238,21 @@ async def _async_write_diagnostic_image(
     details: dict[str, Any],
 ) -> None:
     """Publish and send a diagnostic image using normal image semantics."""
-    runtime.preview_coordinator.async_set_updated_data(image_data)
-    await _async_send_packets(
-        hass,
-        runtime,
-        packets=packets,
-        action_key=action_key,
-        result_name=result_name,
-        details=details,
-    )
-    runtime.image_coordinator.async_set_updated_data(image_data)
+    async with runtime.image_write_lock:
+        if runtime.rotate:
+            packets, image_data, _ = await hass.async_add_executor_job(
+                rotate_image_packets, image_data, runtime.profile
+            )
+        runtime.preview_coordinator.async_set_updated_data(image_data)
+        await _async_send_packets(
+            hass,
+            runtime,
+            packets=packets,
+            action_key=action_key,
+            result_name=result_name,
+            details=details,
+        )
+        runtime.image_coordinator.async_set_updated_data(image_data)
 
 
 async def async_write_white_fill(hass: HomeAssistant, runtime: PandaEslRuntimeData) -> None:

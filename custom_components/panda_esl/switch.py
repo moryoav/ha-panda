@@ -15,9 +15,10 @@ from .const import (
     DOMAIN,
     MANUFACTURER,
     PACKET_NOTIFICATION_CAPTURE,
+    ROTATE,
     WRITE_LOCK,
 )
-from .runtime import PandaEslRuntimeData
+from .runtime import PandaEslRuntimeData, async_set_rotation
 
 PARALLEL_UPDATES = 0
 
@@ -31,9 +32,53 @@ async def async_setup_entry(
     async_add_entities(
         [
             PandaEslWriteLockSwitch(hass, entry),
+            PandaEslRotateSwitch(hass, entry),
             PandaEslPacketNotificationCaptureSwitch(hass, entry),
         ]
     )
+
+
+class PandaEslRotateSwitch(SwitchEntity):
+    """Persistent mounting orientation with an immediate display refresh."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = ROTATE
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_should_poll = False
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize the per-device rotation switch."""
+        self._hass = hass
+        self._entry = entry
+        self._runtime: PandaEslRuntimeData = entry.runtime_data
+        safe_address = self._runtime.state.address.replace(":", "").lower()
+        self._attr_unique_id = f"{DOMAIN}_{safe_address}_{ROTATE}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach the setting to its label."""
+        return DeviceInfo(
+            connections={(CONNECTION_BLUETOOTH, self._runtime.state.address)},
+            identifiers={(DOMAIN, self._runtime.state.address)},
+            manufacturer=MANUFACTURER,
+            model=self._runtime.profile.model,
+            name=self._entry.data.get(CONF_NAME) or self._entry.title,
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return whether outgoing content is rotated by 180 degrees."""
+        return self._runtime.rotate
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Rotate the current content and subsequent writes."""
+        await async_set_rotation(self._hass, self._entry, True)
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Restore the normal mounting orientation."""
+        await async_set_rotation(self._hass, self._entry, False)
+        self.async_write_ha_state()
 
 
 class PandaEslWriteLockSwitch(RestoreEntity, SwitchEntity):

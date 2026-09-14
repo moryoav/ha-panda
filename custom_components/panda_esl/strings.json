@@ -113,6 +113,9 @@
       },
       "packet_notification_capture": {
         "name": "Packet notification capture"
+      },
+      "rotate": {
+        "name": "Rotate"
       }
     }
   },
@@ -231,6 +234,9 @@
     },
     "no_recorded_data": {
       "message": "No recorder data was found for {entity_id}."
+    },
+    "rotation_write_locked": {
+      "message": "Turn off Write lock before rotating the current display content."
     }
   }
 }

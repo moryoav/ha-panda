@@ -41,6 +41,7 @@ from .const import (
     MAX_RETRY_COUNT,
     PACKET_NOTIFICATION_CAPTURE,
     PANDA_SERVICE_UUID,
+    ROTATE,
     WRITE_LOCK,
 )
 from .models import PandaEslState, service_info_matches_target, title_from_service_info
@@ -50,6 +51,7 @@ from .runtime import (
     PandaEslRuntimeData,
     async_write_rendered_packets,
     build_packets_from_rendered_image,
+    rotate_image_packets,
     update_from_service_info,
 )
 
@@ -179,13 +181,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         image_coordinator=image_coordinator,
         preview_coordinator=preview_coordinator,
         profile=profile,
+        rotate=bool(entry.data.get(ROTATE, False)),
         packet_notification_capture=bool(
             entry.data.get(PACKET_NOTIFICATION_CAPTURE, False)
         ),
     )
     entry.runtime_data = runtime
     coordinator.async_set_updated_data(state)
-    image_coordinator.async_set_updated_data(blank_image)
+    # A fresh entry has no successfully sent content to rotate or restore.
     preview_coordinator.async_set_updated_data(blank_image)
 
     device_entry = dr.async_get(hass).async_get_or_create(
@@ -430,12 +433,14 @@ async def _async_build_service_context(
         runtime.profile.height,
     )
     rendered_image = await hass.async_add_executor_job(render_job)
+    rotate = runtime.rotate
     packet_job = partial(
         build_packets_from_rendered_image,
         rendered_image,
         threshold=threshold,
         red_threshold=red_threshold,
         profile=runtime.profile,
+        rotate=rotate,
     )
     packets, current_image_data, render_details = await hass.async_add_executor_job(
         packet_job
@@ -460,6 +465,7 @@ async def _async_build_service_context(
         "action_key": action_key,
         "details": details,
         "address": runtime.state.address,
+        ROTATE: rotate,
     }
 
 
@@ -489,18 +495,28 @@ async def _async_execute_service_write(
     )
     write_delay_ms = int(options.get(CONF_WRITE_DELAY_MS, DEFAULT_WRITE_DELAY_MS))
 
-    await async_write_rendered_packets(
-        hass,
-        runtime,
-        packets=context["packets"],
-        action_key=context["action_key"],
-        result_name="write_service_ok",
-        details=context["details"],
-        write_delay_ms=write_delay_ms,
-        retry_count=retry_count,
-    )
-    runtime.image_coordinator.async_set_updated_data(context["current_image_data"])
-    store["last_image_data"] = context["current_image_data"]
+    async with runtime.image_write_lock:
+        # A debounced or queued payload may predate an orientation change.
+        if context[ROTATE] != runtime.rotate:
+            packets, image_data, _ = await hass.async_add_executor_job(
+                rotate_image_packets, context["current_image_data"], runtime.profile
+            )
+            context.update(
+                packets=packets, current_image_data=image_data, rotate=runtime.rotate
+            )
+        runtime.preview_coordinator.async_set_updated_data(context["current_image_data"])
+        await async_write_rendered_packets(
+            hass,
+            runtime,
+            packets=context["packets"],
+            action_key=context["action_key"],
+            result_name="write_service_ok",
+            details=context["details"],
+            write_delay_ms=write_delay_ms,
+            retry_count=retry_count,
+        )
+        runtime.image_coordinator.async_set_updated_data(context["current_image_data"])
+        store["last_image_data"] = context["current_image_data"]
 
 
 async def _async_run_guarded_write(

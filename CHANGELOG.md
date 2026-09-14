@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.22 - 2026-09-14
+
+- Add a per-device Rotate configuration switch for labels mounted upside down.
+- Refresh the last successfully sent image immediately when Rotate changes, and apply an additional 180 degrees to all subsequent service and diagnostic images.
+- Preserve the rotation setting across restarts and apply the current orientation to queued writes.
+
 ## 0.1.21 - 2026-08-26
 
 - Update Preview content when a diagnostic fill or framed-image button is pressed, and update Last updated content after the transfer succeeds.

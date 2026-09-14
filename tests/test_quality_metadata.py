@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.21"
+    assert manifest["version"] == "0.1.22"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
     assert {
@@ -131,6 +131,7 @@ def test_translations_cover_entities_services_and_exceptions() -> None:
     assert set(strings["entity"]["switch"]) == {
         "write_lock",
         "packet_notification_capture",
+        "rotate",
     }
     assert {
         "target_device_required",
@@ -173,7 +174,7 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.21 - 2026-08-26" in changelog
+    assert "## 0.1.22 - 2026-09-14" in changelog
     assert "91 08 <percent> 19" in changelog
     assert "Diagnostic fill and framed-image buttons update Preview content" in readme
     assert "battery percentage diagnostic sensor" in changelog
