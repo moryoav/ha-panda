@@ -1,0 +1,491 @@
+{
+  "noto-sans-kr-thin": {
+    "name": "Noto Sans KR Thin",
+    "file": "NotoSansKR-Thin.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-extralight": {
+    "name": "Noto Sans KR ExtraLight",
+    "file": "NotoSansKR-ExtraLight.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-light": {
+    "name": "Noto Sans KR Light",
+    "file": "NotoSansKR-Light.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-regular": {
+    "name": "Noto Sans KR Regular",
+    "file": "fonts/NotoSansKR-Regular.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-medium": {
+    "name": "Noto Sans KR Medium",
+    "file": "NotoSansKR-Medium.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-semibold": {
+    "name": "Noto Sans KR SemiBold",
+    "file": "NotoSansKR-SemiBold.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-bold": {
+    "name": "Noto Sans KR Bold",
+    "file": "fonts/NotoSansKR-Bold.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-extrabold": {
+    "name": "Noto Sans KR ExtraBold",
+    "file": "NotoSansKR-ExtraBold.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "noto-sans-kr-black": {
+    "name": "Noto Sans KR Black",
+    "file": "NotoSansKR-Black.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "gmarket-sans-light": {
+    "name": "Gmarket Sans Light",
+    "file": "GmarketSansTTFLight.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "gmarket-sans-medium": {
+    "name": "Gmarket Sans Medium",
+    "file": "GmarketSansTTFMedium.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "gmarket-sans-bold": {
+    "name": "Gmarket Sans Bold",
+    "file": "GmarketSansTTFBold.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "cookierun-regular": {
+    "name": "CookieRun Regular",
+    "file": "CookieRunRegular.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "cookierun-bold": {
+    "name": "CookieRun Bold",
+    "file": "CookieRunBold.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "cookierun-black": {
+    "name": "CookieRun Black",
+    "file": "CookieRunBlack.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "ownglyph-park-dahyun": {
+    "name": "Ownglyph Park DaHyun",
+    "file": "OwnglyphParkDaHyun.ttf",
+    "group": "korean",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "atkinson-hyperlegible-regular": {
+    "name": "Atkinson Hyperlegible Regular",
+    "file": "AtkinsonHyperlegible-Regular.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "atkinson-hyperlegible-bold": {
+    "name": "Atkinson Hyperlegible Bold",
+    "file": "AtkinsonHyperlegible-Bold.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "b612-regular": {
+    "name": "B612 Regular",
+    "file": "B612-Regular.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "b612-bold": {
+    "name": "B612 Bold",
+    "file": "B612-Bold.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "dejavu-sans": {
+    "name": "DejaVu Sans",
+    "file": "DejaVuSans.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "dejavu-sans-bold": {
+    "name": "DejaVu Sans Bold",
+    "file": "DejaVuSans-Bold.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "liberation-sans-regular": {
+    "name": "Liberation Sans Regular",
+    "file": "LiberationSans-Regular.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "liberation-sans-bold": {
+    "name": "Liberation Sans Bold",
+    "file": "LiberationSans-Bold.ttf",
+    "group": "screen",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "silkscreen-regular": {
+    "name": "Silkscreen Regular",
+    "file": "Silkscreen-Regular.ttf",
+    "group": "pixel",
+    "grid": 8,
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "silkscreen-bold": {
+    "name": "Silkscreen Bold",
+    "file": "Silkscreen-Bold.ttf",
+    "group": "pixel",
+    "grid": 8,
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "press-start-2p": {
+    "name": "Press Start 2P",
+    "file": "PressStart2P-Regular.ttf",
+    "group": "pixel",
+    "grid": 8,
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "vt323": {
+    "name": "VT323",
+    "file": "VT323-Regular.ttf",
+    "group": "pixel",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "pixelify-sans": {
+    "name": "Pixelify Sans",
+    "file": "PixelifySans.ttf",
+    "group": "pixel",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "tiny5": {
+    "name": "Tiny5",
+    "file": "Tiny5-Regular.ttf",
+    "group": "pixel",
+    "grid": 8,
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "jersey-10": {
+    "name": "Jersey 10",
+    "file": "Jersey10-Regular.ttf",
+    "group": "pixel",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "dotgothic16": {
+    "name": "DotGothic16",
+    "file": "DotGothic16-Regular.ttf",
+    "group": "pixel",
+    "grid": 16,
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 48,
+      "body": 32
+    }
+  },
+  "terminus": {
+    "name": "Terminus TTF",
+    "file": "TerminusTTF.ttf",
+    "group": "pixel",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "terminus-bold": {
+    "name": "Terminus TTF Bold",
+    "file": "TerminusTTF-Bold.ttf",
+    "group": "pixel",
+    "2.13": {
+      "title": 48,
+      "body": 32
+    },
+    "2.66": {
+      "title": 56,
+      "body": 40
+    }
+  },
+  "galmuri11": {
+    "name": "Galmuri11",
+    "file": "Galmuri11.ttf",
+    "group": "pixel",
+    "grid": 12,
+    "2.13": {
+      "title": 48,
+      "body": 36
+    },
+    "2.66": {
+      "title": 48,
+      "body": 36
+    }
+  },
+  "galmuri11-bold": {
+    "name": "Galmuri11 Bold",
+    "file": "Galmuri11-Bold.ttf",
+    "group": "pixel",
+    "grid": 12,
+    "2.13": {
+      "title": 48,
+      "body": 36
+    },
+    "2.66": {
+      "title": 48,
+      "body": 36
+    }
+  },
+  "galmuri14": {
+    "name": "Galmuri14",
+    "file": "Galmuri14.ttf",
+    "group": "pixel",
+    "grid": 15,
+    "2.13": {
+      "title": 45,
+      "body": 30
+    },
+    "2.66": {
+      "title": 45,
+      "body": 30
+    }
+  }
+}

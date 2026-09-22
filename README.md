@@ -232,7 +232,7 @@ Optional font files that used to be bundled with the integration are still avail
 font: GmarketSansTTFBold.ttf
 ```
 
-See [Font Previews](docs/font-previews.md) for dry-run examples of each bundled and optional text font on the 256x128 PANDA ESL canvas.
+See [Font Previews](docs/font-previews.md) for dry-run examples of each bundled and optional text font on the 2.13" (256x128) and 2.66" (296x152) PANDA ESL canvases, including fonts chosen for crisp rendering on small monochrome screens.
 
 ## Data Updates
 
