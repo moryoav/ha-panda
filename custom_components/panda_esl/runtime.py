@@ -76,13 +76,13 @@ class PandaEslRuntimeData:
     image_write_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
-def rotate_image_packets(
-    image_data: bytes, profile: PandaEslDeviceProfile
+def build_packets_from_image_data(
+    image_data: bytes, profile: PandaEslDeviceProfile, rotate: bool
 ) -> tuple[list[bytes], bytes, dict[str, Any]]:
-    """Rotate an already quantized display image without changing its colors."""
+    """Encode canonical image bytes using the requested mounting orientation."""
     with Image.open(BytesIO(image_data)) as image:
         return build_packets_from_rendered_image(
-            image.transpose(Image.Transpose.ROTATE_180), profile=profile
+            image, profile=profile, rotate=rotate
         )
 
 
@@ -102,10 +102,9 @@ async def async_set_rotation(
                     translation_domain=DOMAIN,
                     translation_key="rotation_write_locked",
                 )
-            packets, rotated_data, details = await hass.async_add_executor_job(
-                rotate_image_packets, image_data, runtime.profile
+            packets, _, details = await hass.async_add_executor_job(
+                build_packets_from_image_data, image_data, runtime.profile, rotate
             )
-            runtime.preview_coordinator.async_set_updated_data(rotated_data)
             options = {**entry.data, **entry.options}
             await async_write_rendered_packets(
                 hass,
@@ -119,8 +118,7 @@ async def async_set_rotation(
                 ),
                 retry_count=int(options.get(CONF_RETRY_COUNT, DEFAULT_RETRY_COUNT)),
             )
-            runtime.image_coordinator.async_set_updated_data(rotated_data)
-            store["last_image_data"] = rotated_data
+            store["last_image_data"] = image_data
         runtime.rotate = rotate
         hass.config_entries.async_update_entry(entry, data={**entry.data, ROTATE: rotate})
 
@@ -599,8 +597,6 @@ def build_packets_from_rendered_image(
     if image.size != (profile.width, profile.height):
         image = image.resize((profile.width, profile.height), Image.LANCZOS)
 
-    if rotate:
-        image = image.transpose(Image.Transpose.ROTATE_180)
     rgb_image = image.convert("RGB")
     display_pixels: list[list[int]] = []
     counts = {"white": 0, "black": 0, "red": 0}
@@ -618,9 +614,12 @@ def build_packets_from_rendered_image(
                 counts["white"] += 1
         display_pixels.append(row)
 
-    memory_pixels = [
-        display_pixels[profile.height - 1 - y][:] for y in range(profile.height)
-    ]
+    # Mounting rotation affects only the wire image. Keep the PNG in the
+    # rendered orientation for previews, successful content, and queued writes.
+    wire_pixels = (
+        [row[::-1] for row in reversed(display_pixels)] if rotate else display_pixels
+    )
+    memory_pixels = [row[:] for row in reversed(wire_pixels)]
     plane0, plane1 = _encode_pixels_plane01(
         memory_pixels,
         row_major=profile.row_major,
@@ -1254,8 +1253,8 @@ async def _async_write_diagnostic_image(
     """Publish and send a diagnostic image using normal image semantics."""
     async with runtime.image_write_lock:
         if runtime.rotate:
-            packets, image_data, _ = await hass.async_add_executor_job(
-                rotate_image_packets, image_data, runtime.profile
+            packets, _, _ = await hass.async_add_executor_job(
+                build_packets_from_image_data, image_data, runtime.profile, True
             )
         runtime.preview_coordinator.async_set_updated_data(image_data)
         await _async_send_packets(

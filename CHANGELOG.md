@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.25 - 2026-09-28
+
+- Keep Preview content and Last updated content independent of the Rotate switch while preserving mounting rotation on the physical label.
+- Preserve unrotated image caches across switch changes, diagnostic writes, queued writes, and restarts.
+- Normalize successful images saved by older versions and regenerate legacy previews on the next write or dry run.
+
 ## 0.1.24 - 2026-09-28
 
 - Preserve full-write retries when the Bluetooth proxy disconnects during connection cleanup.

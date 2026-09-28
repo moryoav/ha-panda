@@ -5,8 +5,11 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from datetime import datetime
+from io import BytesIO
 import logging
 from typing import Any
+
+from PIL import Image as PILImage
 
 from homeassistant.components.image import Image, ImageEntity
 from homeassistant.config_entries import ConfigEntry
@@ -25,7 +28,7 @@ from .runtime import PandaEslRuntimeData
 _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
-RESTORE_DATA_VERSION = 1
+RESTORE_DATA_VERSION = 2
 RESTORE_CONTENT_TYPE = "image/png"
 
 
@@ -71,7 +74,7 @@ class PandaEslImageExtraStoredData(ExtraStoredData):
         cls, restored: dict[str, Any]
     ) -> "PandaEslImageExtraStoredData | None":
         """Return restored image data, or None when the payload is unusable."""
-        if restored.get("version") != RESTORE_DATA_VERSION:
+        if restored.get("version") not in (1, RESTORE_DATA_VERSION):
             return None
         if restored.get("content_type") != RESTORE_CONTENT_TYPE:
             return None
@@ -84,7 +87,15 @@ class PandaEslImageExtraStoredData(ExtraStoredData):
             return None
         if not content:
             return None
-        return cls(content=content)
+        return cls(content=content, version=restored["version"])
+
+
+def _unrotate_legacy_image(content: bytes) -> bytes:
+    """Normalize successful content saved with the old mounting rotation."""
+    with PILImage.open(BytesIO(content)) as image:
+        output = BytesIO()
+        image.transpose(PILImage.Transpose.ROTATE_180).save(output, format="PNG")
+        return output.getvalue()
 
 
 def _restored_image_timestamp(last_state: State | None) -> datetime | None:
@@ -135,10 +146,25 @@ class PandaEslImageEntity(
         if restored_image is None:
             return
 
-        self.coordinator.data = restored_image.content
+        content = restored_image.content
+        if restored_image.version == 1:
+            # Old previews can reflect an unsent or failed rotation, so their
+            # orientation cannot be inferred from the persisted switch value.
+            if self._attr_translation_key == "preview_content":
+                return
+            if self._runtime.rotate:
+                try:
+                    content = await self.hass.async_add_executor_job(
+                        _unrotate_legacy_image, content
+                    )
+                except OSError:
+                    _LOGGER.warning("Ignoring invalid legacy PANDA ESL image")
+                    return
+
+        self.coordinator.data = content
         self._cached_image = Image(
             content_type=restored_image.content_type,
-            content=restored_image.content,
+            content=content,
         )
         self._attr_image_last_updated = _restored_image_timestamp(
             await self.async_get_last_state()

@@ -50,8 +50,8 @@ from .renderer import blank_png, render_service_image
 from .runtime import (
     PandaEslRuntimeData,
     async_write_rendered_packets,
+    build_packets_from_image_data,
     build_packets_from_rendered_image,
-    rotate_image_packets,
     update_from_service_info,
 )
 
@@ -498,12 +498,13 @@ async def _async_execute_service_write(
     async with runtime.image_write_lock:
         # A debounced or queued payload may predate an orientation change.
         if context[ROTATE] != runtime.rotate:
-            packets, image_data, _ = await hass.async_add_executor_job(
-                rotate_image_packets, context["current_image_data"], runtime.profile
+            packets, _, _ = await hass.async_add_executor_job(
+                build_packets_from_image_data,
+                context["current_image_data"],
+                runtime.profile,
+                runtime.rotate,
             )
-            context.update(
-                packets=packets, current_image_data=image_data, rotate=runtime.rotate
-            )
+            context.update(packets=packets, rotate=runtime.rotate)
         runtime.preview_coordinator.async_set_updated_data(context["current_image_data"])
         await async_write_rendered_packets(
             hass,

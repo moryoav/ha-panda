@@ -91,9 +91,11 @@ async def test_rotate_refresh_round_trip(monkeypatch, profile):
     assert send.call_args.kwargs["packets"] == expected_packets
     assert send.call_args.kwargs["retry_count"] == 2
     assert send.call_args.kwargs["write_delay_ms"] == 25
-    assert runtime.image_coordinator.data == expected_png
-    assert runtime.preview_coordinator.data == expected_png
-    assert hass.data["panda_esl"]["label"]["last_image_data"] == expected_png
+    assert runtime.image_coordinator.data == png
+    assert runtime.preview_coordinator.data == b"unsent preview"
+    assert runtime.image_coordinator.updates == []
+    assert runtime.preview_coordinator.updates == []
+    assert hass.data["panda_esl"]["label"]["last_image_data"] == png
     assert entry.data["rotate"] is runtime.rotate is True
     assert entry.data["name"] == "Label"
     await panda_runtime.async_set_rotation(hass, entry, True)
@@ -124,7 +126,7 @@ async def test_failed_refresh_keeps_orientation_and_successful_content(monkeypat
     assert entity.is_on is False
     assert entry.data == {"name": "Label"}
     assert runtime.image_coordinator.data == png
-    assert runtime.preview_coordinator.data != png
+    assert runtime.preview_coordinator.data is None
     send.side_effect = None
     await entity.async_turn_on()
     assert entity.is_on is True
@@ -161,10 +163,15 @@ async def test_write_lock_rejects_refresh(monkeypatch):
     send.assert_not_awaited()
 
 
-async def test_queued_service_uses_latest_orientation(monkeypatch):
+@pytest.mark.parametrize("new_rotation", [False, True])
+async def test_queued_service_uses_latest_orientation(monkeypatch, new_rotation):
     """A payload prepared before the switch changes must follow the new setting."""
     hass, entry, _, packets, png, details = _setup()
     runtime = entry.runtime_data
+    runtime.rotate = not new_rotation
+    packets, _, _ = panda_runtime.build_packets_from_image_data(
+        png, runtime.profile, runtime.rotate
+    )
     context = {
         "runtime": runtime,
         "store": hass.data["panda_esl"]["label"],
@@ -173,20 +180,21 @@ async def test_queued_service_uses_latest_orientation(monkeypatch):
         "current_image_data": png,
         "details": details,
         "action_key": "service_write_guarded",
-        "rotate": False,
+        "rotate": runtime.rotate,
     }
-    await panda_runtime.async_set_rotation(hass, entry, True)
+    await panda_runtime.async_set_rotation(hass, entry, new_rotation)
     send = AsyncMock()
     monkeypatch.setattr(panda_init, "async_write_rendered_packets", send)
 
     await panda_init._async_execute_service_write(hass, context)
 
-    expected_packets, expected_png, _ = panda_runtime.rotate_image_packets(
-        png, runtime.profile
+    expected_packets, _, _ = panda_runtime.build_packets_from_image_data(
+        png, runtime.profile, new_rotation
     )
     assert send.call_args.kwargs["packets"] == expected_packets
-    assert runtime.image_coordinator.data == expected_png
-    assert context["rotate"] is True
+    assert runtime.image_coordinator.data == png
+    assert runtime.preview_coordinator.data == png
+    assert context["rotate"] is new_rotation
 
 
 async def test_rotation_waits_for_active_write(monkeypatch):
@@ -221,8 +229,8 @@ async def test_rotation_waits_for_active_write(monkeypatch):
     finish.set()
     await asyncio.gather(write, toggle)
 
-    _, expected, _ = panda_runtime.rotate_image_packets(png, runtime.profile)
-    assert runtime.image_coordinator.data == expected
+    assert runtime.image_coordinator.data == png
+    assert runtime.preview_coordinator.data == png
     rotation_send.assert_awaited_once()
 
 
@@ -253,12 +261,12 @@ async def test_service_rotation_is_additive_and_preview_matches(
     rotated = await panda_init._async_build_service_context(
         hass, service, "label", guarded=False
     )
-    expected_packets, expected_png, _ = panda_runtime.rotate_image_packets(
-        normal["current_image_data"], entry.runtime_data.profile
+    expected_packets, _, _ = panda_runtime.build_packets_from_image_data(
+        normal["current_image_data"], entry.runtime_data.profile, True
     )
     assert rotated["packets"] == expected_packets
-    assert rotated["current_image_data"] == expected_png
-    assert entry.runtime_data.preview_coordinator.data == expected_png
+    assert rotated["current_image_data"] == normal["current_image_data"]
+    assert entry.runtime_data.preview_coordinator.data == normal["current_image_data"]
     assert entry.runtime_data.image_coordinator.data is None
 
 
@@ -286,32 +294,39 @@ async def test_diagnostic_images_follow_rotation(monkeypatch, profile, content):
         await getattr(panda_runtime, f"async_write_{content}_fill")(hass, runtime)
         normal_png = panda_runtime._fill_preview_png(content, profile)
 
-    expected_packets, expected_png, _ = panda_runtime.rotate_image_packets(
-        normal_png, profile
+    expected_packets, _, _ = panda_runtime.build_packets_from_image_data(
+        normal_png, profile, True
     )
     assert send.call_args.kwargs["packets"] == expected_packets
-    assert runtime.image_coordinator.data == expected_png
-    assert runtime.preview_coordinator.data == expected_png
+    assert runtime.image_coordinator.data == normal_png
+    assert runtime.preview_coordinator.data == normal_png
 
 
-async def test_restored_image_can_be_rotated_back_after_restart(hass, monkeypatch):
-    """Restore the transmitted PNG and use the persisted mounting orientation."""
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("key", ["last_updated_content", "preview_content"])
+@pytest.mark.parametrize("rotate", [False, True])
+async def test_restored_image_orientation_after_restart(
+    hass, monkeypatch, version, key, rotate
+):
+    """Migrate old successful images and never rotate new saved PNGs twice."""
     fake_hass, entry, _, _, png, _ = _setup()
     runtime = entry.runtime_data
-    entry.data["rotate"] = runtime.rotate = True
-    _, rotated_png, _ = panda_runtime.rotate_image_packets(png, runtime.profile)
+    entry.data["rotate"] = runtime.rotate = rotate
+    rotated_png = panda_image._unrotate_legacy_image(png)
+    saved_png = rotated_png if version == 1 and rotate else png
     runtime.image_coordinator = DataUpdateCoordinator(
         hass, logging.getLogger(__name__), name="image", config_entry=None
     )
     entity = panda_image.PandaEslImageEntity(
-        hass, entry, runtime.image_coordinator, "last_updated_content"
+        hass, entry, runtime.image_coordinator, key
     )
+    entity.hass = hass
     monkeypatch.setattr(panda_image.RestoreEntity, "async_added_to_hass", AsyncMock())
     monkeypatch.setattr(
         entity,
         "async_get_last_extra_data",
         AsyncMock(
-            return_value=panda_image.PandaEslImageExtraStoredData(content=rotated_png)
+            return_value=panda_image.PandaEslImageExtraStoredData(content=saved_png, version=version)
         ),
     )
     monkeypatch.setattr(
@@ -322,12 +337,16 @@ async def test_restored_image_can_be_rotated_back_after_restart(hass, monkeypatc
 
     await entity.async_added_to_hass()
 
-    assert runtime.image_coordinator.data == rotated_png
+    if version == 1 and key == "preview_content":
+        assert runtime.image_coordinator.data is None
+        return
+    assert runtime.image_coordinator.data == png
+    assert entity.extra_restore_state_data.version == 2
     send = AsyncMock()
     monkeypatch.setattr(panda_runtime, "async_write_rendered_packets", send)
-    await panda_runtime.async_set_rotation(fake_hass, entry, False)
+    await panda_runtime.async_set_rotation(fake_hass, entry, not rotate)
     assert runtime.image_coordinator.data == png
-    assert entry.data["rotate"] is False
+    assert entry.data["rotate"] is not rotate
     send.assert_awaited_once()
 
 
