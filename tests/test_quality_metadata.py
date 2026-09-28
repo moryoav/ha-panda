@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.23"
+    assert manifest["version"] == "0.1.24"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
     assert {
@@ -125,6 +125,7 @@ def test_translations_cover_entities_services_and_exceptions() -> None:
     }
     assert set(strings["entity"]["sensor"]) == {
         "write_progress",
+        "write_status",
         "battery",
         "bluetooth_rssi",
     }
@@ -176,7 +177,7 @@ def test_documentation_and_changelog_reference_current_version() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert "## 0.1.23 - 2026-09-14" in changelog
+    assert "## 0.1.24 - 2026-09-28" in changelog
     assert "91 08 <percent> 19" in changelog
     assert "Diagnostic fill and framed-image buttons update Preview content" in readme
     assert "battery percentage diagnostic sensor" in changelog

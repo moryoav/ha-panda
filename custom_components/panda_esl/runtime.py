@@ -665,6 +665,7 @@ async def _async_send_packets_attempt(
     address = runtime.state.address
     wire_packets = [PANDA_DEVICE_INFO_REQUEST, *packets]
     image_packet_total = _image_chunk_packet_count(packets)
+    runtime.state.update_write_action(action_key, "write_in_progress")
     runtime.state.update_write_progress(
         0.0,
         chunks_written=0,
@@ -1033,6 +1034,13 @@ async def _async_send_packets_attempt(
 
         runtime.state.update_write_action(action_key, result_name, details=write_details)
         runtime.coordinator.async_set_updated_data(runtime.state)
+    except asyncio.CancelledError:
+        runtime.state.update_write_progress(
+            runtime.state.write_progress_percent, attempt=attempt, active=False
+        )
+        runtime.state.update_write_action(action_key, "write_cancelled")
+        runtime.coordinator.async_set_updated_data(runtime.state)
+        raise
     except Exception as err:
         error_details: dict[str, Any] = {
             **details,
@@ -1156,7 +1164,13 @@ async def _async_send_packets_attempt(
         ) from err
     finally:
         if client is not None and client.is_connected:
-            await client.disconnect()
+            try:
+                await client.disconnect()
+            except Exception as err:  # noqa: BLE001
+                # A proxy can disappear before cleanup. Preserve the transfer
+                # error so the outer retry loop can reconnect, and do not turn
+                # an acknowledged transfer into a failure during cleanup.
+                _LOGGER.warning("Failed to disconnect PANDA ESL %s: %s", address, err)
 
 
 async def _async_send_packets(

@@ -36,6 +36,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             PandaEslWriteProgressSensor(entry, runtime),
+            PandaEslWriteStatusSensor(entry, runtime),
             PandaEslBatterySensor(entry, runtime),
             PandaEslBluetoothRssiSensor(entry, runtime),
         ]
@@ -76,6 +77,13 @@ class PandaEslWriteProgressSensor(CoordinatorEntity, SensorEntity):
             "chunks_written": self._panda_state.write_progress_chunks_written,
             "chunks_total": self._panda_state.write_progress_chunks_total,
             "attempt": self._panda_state.write_progress_attempt,
+            "last_result": self._panda_state.last_write_result,
+            "last_error": self._panda_state.last_write_error,
+            "last_write": (
+                self._panda_state.last_write.isoformat()
+                if self._panda_state.last_write is not None
+                else None
+            ),
         }
 
     @property
@@ -93,6 +101,34 @@ class PandaEslWriteProgressSensor(CoordinatorEntity, SensorEntity):
     def _panda_state(self) -> PandaEslState:
         """Return the current shared state."""
         return self._runtime.state
+
+
+class PandaEslWriteStatusSensor(PandaEslWriteProgressSensor):
+    """Expose transfer failures without claiming to read the physical screen."""
+
+    _attr_translation_key = "write_status"
+    _attr_native_unit_of_measurement = None
+    _attr_suggested_display_precision = None
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["idle", "writing", "transfer_complete", "error"]
+
+    def __init__(self, entry: ConfigEntry, runtime: PandaEslRuntimeData) -> None:
+        """Initialize the transfer status sensor."""
+        super().__init__(entry, runtime)
+        safe_address = runtime.state.address.replace(":", "").lower()
+        self._attr_unique_id = f"{DOMAIN}_{safe_address}_write_status"
+
+    @property
+    def native_value(self) -> str:
+        """Report protocol completion separately from physical display state."""
+        state = self._panda_state
+        if state.write_progress_active or state.last_write_result == "write_in_progress":
+            return "writing"
+        if state.last_write_error is not None:
+            return "error"
+        if state.last_write_result and state.last_write_result.endswith("_ok"):
+            return "transfer_complete"
+        return "idle"
 
 
 class PandaEslBluetoothRssiSensor(CoordinatorEntity, SensorEntity):

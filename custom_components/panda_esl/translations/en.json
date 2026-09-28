@@ -105,6 +105,15 @@
       },
       "bluetooth_rssi": {
         "name": "Bluetooth RSSI"
+      },
+      "write_status": {
+        "name": "Write status",
+        "state": {
+          "idle": "Idle",
+          "writing": "Writing",
+          "transfer_complete": "Transfer complete",
+          "error": "Error"
+        }
       }
     },
     "switch": {

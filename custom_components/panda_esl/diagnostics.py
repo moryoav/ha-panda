@@ -8,9 +8,10 @@ from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_ADDRESS, DOMAIN
+from .const import DOMAIN
 from .runtime import PandaEslRuntimeData
 
 TO_REDACT = [CONF_ADDRESS, "address"]

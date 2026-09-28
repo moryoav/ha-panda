@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.24 - 2026-09-28
+
+- Preserve full-write retries when the Bluetooth proxy disconnects during connection cleanup.
+- Keep an acknowledged transfer successful if only connection cleanup fails.
+- Add a Write status sensor and expose the last result, error, and attempt timestamp on the write sensors.
+- Fix the diagnostics import so downloaded diagnostics include service-write errors.
+- Clarify that 100% progress confirms the tag's acknowledgement and cannot verify the physical screen.
+
 ## 0.1.23 - 2026-09-14
 
 - Fix the missing Rotate switch icon by replacing the invalid `mdi:rotate-180` name with `mdi:rotate-right`.

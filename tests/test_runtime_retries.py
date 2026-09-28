@@ -93,6 +93,8 @@ class FakeCoordinator:
                 "chunks_written": state.write_progress_chunks_written,
                 "percent": state.write_progress_percent,
                 "active": state.write_progress_active,
+                "last_result": state.last_write_result,
+                "last_error": state.last_write_error,
             }
         )
 
@@ -854,6 +856,103 @@ async def test_chunk_ack_timeout_uses_whole_write_retry(
     assert attrs["chunk_retry_count"] == 0
     assert attrs["image_packets_confirmed"] == 2
     assert runtime.state.write_progress_chunks_written == 2
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+@pytest.mark.parametrize("transfer_fails", [False, True])
+async def test_disconnect_failure_preserves_transfer_outcome(
+    monkeypatch: pytest.MonkeyPatch, transfer_fails: bool
+) -> None:
+    """A lost proxy during cleanup must neither suppress retries nor undo ACKs."""
+    from bleak.exc import BleakError
+
+    class DisconnectFailureClient(FakeBleClient):
+        async def disconnect(self) -> None:
+            raise BleakError("Connection reset by peer")
+
+    first = DisconnectFailureClient(
+        always_drop={(0, 1)} if transfer_fails else None
+    )
+    second = FakeBleClient()
+    used = _install_clients(monkeypatch, [first, second])
+    runtime, _coordinator = _runtime_data()
+
+    await panda_runtime._async_send_packets(
+        FakeHass(), runtime, packets=_packets(), action_key="test",
+        result_name="write_test_ok", details={}, write_delay_ms=0, retry_count=1,
+    )
+
+    assert used == ([first, second] if transfer_fails else [first])
+    assert runtime.state.last_write_error is None
+    assert runtime.state.last_write_result == "write_test_ok"
+    assert runtime.state.write_progress_percent == 100
+    assert runtime.state.write_progress_attempt == (2 if transfer_fails else 1)
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+async def test_disconnect_failure_preserves_original_error_without_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The actionable ACK error survives even if cleanup also fails."""
+    from bleak.exc import BleakError
+
+    client = FakeBleClient(always_drop={(0, 1)})
+
+    async def failed_disconnect() -> None:
+        raise BleakError("Connection reset by peer")
+
+    monkeypatch.setattr(client, "disconnect", failed_disconnect)
+    _install_clients(monkeypatch, [client])
+    runtime, _coordinator = _runtime_data()
+    with pytest.raises(HomeAssistantError, match="cycle 0 chunk 1"):
+        await panda_runtime._async_send_packets(
+            FakeHass(), runtime, packets=_packets(), action_key="test",
+            result_name="write_test_ok", details={}, write_delay_ms=0, retry_count=0,
+        )
+    assert "cycle 0 chunk 1" in runtime.state.last_write_error
+    assert runtime.state.write_progress_active is False
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+async def test_new_attempt_clears_previous_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An acknowledged retry must not briefly publish the old failure at 100%."""
+    _install_clients(monkeypatch, [FakeBleClient()])
+    runtime, coordinator = _runtime_data()
+    runtime.state.update_write_action("test", "write_test_ok_error", "Old timeout")
+
+    await panda_runtime._async_send_packets(
+        FakeHass(), runtime, packets=_packets(), action_key="test",
+        result_name="write_test_ok", details={}, write_delay_ms=0, retry_count=0,
+    )
+
+    assert coordinator.snapshots[0]["last_result"] == "write_in_progress"
+    assert all(snapshot["last_error"] is None for snapshot in coordinator.snapshots)
+    assert coordinator.snapshots[-1]["last_result"] == "write_test_ok"
+
+
+@pytest.mark.usefixtures("retry_test_setup")
+async def test_cancelled_write_clears_active_state_without_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cancellation releases the client and never leaves a write stuck active."""
+    class CancelledClient(FakeBleClient):
+        async def write_gatt_char(self, *_args, **_kwargs) -> None:
+            raise asyncio.CancelledError
+
+    client = CancelledClient()
+    used = _install_clients(monkeypatch, [client, FakeBleClient()])
+    runtime, _ = _runtime_data()
+    with pytest.raises(asyncio.CancelledError):
+        await panda_runtime._async_send_packets(
+            FakeHass(), runtime, packets=_packets(), action_key="test",
+            result_name="write_test_ok", details={}, write_delay_ms=0, retry_count=3,
+        )
+    assert used == [client]
+    assert client.is_connected is False
+    assert runtime.state.write_progress_active is False
+    assert runtime.state.last_write_result == "write_cancelled"
 
 
 @pytest.mark.usefixtures("retry_test_setup")

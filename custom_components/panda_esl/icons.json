@@ -31,6 +31,14 @@
       },
       "bluetooth_rssi": {
         "default": "mdi:bluetooth"
+      },
+      "write_status": {
+        "default": "mdi:transfer",
+        "state": {
+          "error": "mdi:alert-circle-outline",
+          "writing": "mdi:upload",
+          "transfer_complete": "mdi:check-circle-outline"
+        }
       }
     },
     "switch": {

@@ -120,6 +120,7 @@ Each configured label creates one Home Assistant device.
 | Last updated content | None | Yes | PNG image of the last payload successfully written to the label. |
 | Preview content | Diagnostic | Yes | PNG preview of the last rendered payload, including dry runs. |
 | Write progress | None | Yes | Percentage progress for the active or most recent BLE image write, with chunk counts as attributes. |
+| Write status | None | Yes | Idle, Writing, Transfer complete, or Error, with the last result and error as attributes. |
 | Battery | Diagnostic | Yes | Last battery percentage reported by the label during a physical display write. |
 | Bluetooth RSSI | Diagnostic | Yes | Latest advertised Bluetooth signal strength in dBm. |
 | Write lock | Configuration | Yes | Prevents `panda_esl.write_guarded` from physically writing to the label. |
@@ -245,6 +246,10 @@ Each physical display write sends the PANDA device-information request after not
 Writes use a connectable BLE handle at action time. If no connectable handle is available, Home Assistant raises a translated action error and records the failure in the diagnostic attributes.
 
 The Write progress sensor resets to 0% when a physical write attempt starts, advances after each acknowledged image chunk, and reaches 100% only after the final commit notification is received.
+
+100% and **Transfer complete** confirm that the tag acknowledged the image transfer and refresh command. The protocol does not provide a readback of the physical screen. Preview content is the locally rendered image, and Last updated content is the last acknowledged image; neither is a photograph or readback of the label. A blank screen after an acknowledged transfer cannot be detected from these acknowledgements alone.
+
+**Write status** reports **Error** when a transfer fails. Its `last_error` attribute and the same attribute on Write progress contain the failure reason. A new attempt shows **Writing** and a successful transfer clears the error. Disconnect errors during cleanup do not suppress the configured retries or invalidate an acknowledged transfer.
 
 ## Examples
 
