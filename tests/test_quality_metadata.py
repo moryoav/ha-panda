@@ -32,7 +32,7 @@ def test_manifest_advertises_gold_quality_scale() -> None:
     assert manifest["integration_type"] == "device"
     assert manifest["iot_class"] == "local_push"
     assert manifest["quality_scale"] == "gold"
-    assert manifest["version"] == "0.1.25"
+    assert manifest["version"] == "0.1.26"
     assert manifest["config_flow"] is True
     assert manifest["codeowners"] == ["@moryoav"]
     assert {

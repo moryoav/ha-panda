@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.26 - 2026-09-29
+
+- Automate tagged GitHub releases with a validated `panda_esl.zip` containing
+  the integration files at the archive root.
+- Run HACS and Hassfest checks on main pushes, pull requests targeting main,
+  and release workflow calls while keeping the daily HACS check.
+- Align the README support buttons and top badges with the other integrations.
+
 ## 0.1.25 - 2026-09-28
 
 - Keep Preview content and Last updated content independent of the Rotate switch while preserving mounting rotation on the physical label.

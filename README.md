@@ -1,31 +1,29 @@
 # PANDA ESL for Home Assistant
 
-[![HACS Default][hacs-badge]][hacs-url]
-[![Home Assistant][ha-badge]][ha-url]
 [![Release][release-badge]][release-url]
-[![Local Push][iot-badge]][iot-url]
-[![License: MIT][license-badge]][license-url]
+[![HACS][hacs-badge]][hacs-url]
+[![License][license-badge]][license-url]
 
 ---
 
-## Support me on Ko-fi
+## ❤️ Help support this project
 
-If this project is useful to you, you can support its continued development:
+If this project is useful to you, you can support my work:
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Y5B124NZ2L)
+<p>
+  <a href="https://ko-fi.com/Y5B124NZ2L"><img src="https://img.shields.io/badge/Support_on_Ko--fi-FF5E5B?style=for-the-badge&amp;logo=kofi&amp;logoColor=white" alt="Support on Ko-fi" height="36"></a>
+  &nbsp;
+  <a href="https://github.com/sponsors/moryoav"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-EA4AAA?style=for-the-badge&amp;logo=githubsponsors&amp;logoColor=white" alt="Sponsor on GitHub" height="36"></a>
+</p>
 
 ---
 
-[hacs-badge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square
-[hacs-url]: https://www.hacs.xyz/
-[ha-badge]: https://img.shields.io/badge/Home%20Assistant-2024.6%2B-18BCF2.svg?style=flat-square
-[ha-url]: https://www.home-assistant.io/
-[release-badge]: https://img.shields.io/badge/release-latest-blue.svg?style=flat-square
+[hacs-badge]: https://img.shields.io/badge/HACS-41BDF5.svg?style=flat-square
+[hacs-url]: #installation
+[release-badge]: https://img.shields.io/github/v/release/moryoav/ha-panda?style=flat-square
 [release-url]: https://github.com/moryoav/ha-panda/releases/latest
-[iot-badge]: https://img.shields.io/badge/IoT-local%20push-41BDF5.svg?style=flat-square
-[iot-url]: https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/iot-class/
-[license-badge]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square
-[license-url]: https://github.com/moryoav/ha-panda/blob/main/LICENSE
+[license-badge]: https://img.shields.io/github/license/moryoav/ha-panda?style=flat-square
+[license-url]: LICENSE
 
 Home Assistant custom integration for PANDA / ETAG BLE electronic shelf labels.
 
